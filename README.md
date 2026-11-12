@@ -131,6 +131,20 @@ npm test        # builds, then runs the unit tests in test/
 
 Releases are published to npm from GitHub Actions with provenance. See `.github/workflows/publish.yml`.
 
+### Versioning
+
+The package and the node have separate version numbers, and they don't need to match:
+
+- The **package version** (`version` in `package.json`) counts releases on npm. It changes with every release, following [semver](https://semver.org).
+- The **node version** (`version` in `nodes/Unleash/Unleash.node.ts`) is saved in every workflow that uses the node. A saved workflow keeps its node version, but runs the code of whichever package version is installed.
+
+When you release:
+
+- For a fix, or for something new that existing workflows don't use (an operation, an optional field), bump only the package version.
+- For a change that would make existing workflows behave differently (renaming or removing a parameter, changing the output, changing a default), add a node version with [light versioning](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning): set `version: [1, 1.1]`, show the new behavior only from 1.1 with `@version` in `displayOptions`, set `nodeVersion` in `Unleash.node.json` to the new version, and bump the package's minor version. Declarative nodes like this one can't use full versioning.
+- n8n saves only the parameters that differ from their default, so a new default reaches every workflow that never changed the field. Treat it as a breaking change.
+- Name the node version in `CHANGELOG.md` whenever it changes.
+
 ## Resources
 
 - [n8n community nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation)
