@@ -5,6 +5,9 @@ import type {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 } from 'n8n-workflow';
+// Types only, from the Unleash JavaScript browser SDK, which calls the same Frontend API.
+// The package is a devDependency: type imports are removed at build, so nothing ships at runtime.
+import type { IContext, IToggle, IVariant } from 'unleash-proxy-client';
 
 import { version } from '../../package.json';
 
@@ -13,35 +16,12 @@ export const DEFAULT_APP_NAME = 'n8n';
 export const SDK_VERSION = `n8n-nodes-unleash:${version}`;
 
 /** The variant Unleash SDKs return when a flag is disabled or unknown. */
-const DISABLED_VARIANT: FlagVariant = { name: 'disabled', enabled: false, feature_enabled: false };
-
-export interface UnleashContext {
-	appName: string;
-	userId?: string;
-	sessionId?: string;
-	remoteAddress?: string;
-	properties?: Record<string, string>;
-}
-
-export interface FlagVariant {
-	name: string;
-	enabled: boolean;
-	feature_enabled?: boolean;
-	payload?: { type: string; value: string };
-}
+const DISABLED_VARIANT: IVariant = { name: 'disabled', enabled: false, feature_enabled: false };
 
 export interface FlagResult extends IDataObject {
 	name: string;
 	enabled: boolean;
-	variant: FlagVariant;
-}
-
-/** One entry of the `toggles` array returned by `POST /api/frontend`. */
-interface FrontendApiToggle {
-	name: string;
-	enabled: boolean;
-	impressionData?: boolean;
-	variant?: FlagVariant & { featureEnabled?: boolean };
+	variant: IVariant;
 }
 
 interface AdditionalContext {
@@ -55,12 +35,12 @@ function hasValue(value: unknown): boolean {
 }
 
 /** Builds the Unleash context for the current item from the node parameters. */
-export function buildContext(this: IExecuteSingleFunctions): UnleashContext {
+export function buildContext(this: IExecuteSingleFunctions): IContext {
 	const userId = this.getNodeParameter('userId', '');
 	const sessionId = this.getNodeParameter('sessionId', '');
 	const additional = this.getNodeParameter('additionalContext', {}) as AdditionalContext;
 
-	const context: UnleashContext = {
+	const context: IContext = {
 		appName: hasValue(additional.appName) ? String(additional.appName) : DEFAULT_APP_NAME,
 	};
 	if (hasValue(userId)) context.userId = String(userId);
@@ -86,18 +66,18 @@ export async function sendContext(
 	return requestOptions;
 }
 
-function parseToggles(body: unknown): FrontendApiToggle[] {
+function parseToggles(body: unknown): IToggle[] {
 	const parsed = typeof body === 'string' ? (JSON.parse(body) as unknown) : body;
 	const toggles = (parsed as { toggles?: unknown } | undefined)?.toggles;
-	return Array.isArray(toggles) ? (toggles as FrontendApiToggle[]) : [];
+	return Array.isArray(toggles) ? (toggles as IToggle[]) : [];
 }
 
-function toVariant(variant: FrontendApiToggle['variant']): FlagVariant {
+function toVariant(variant: IVariant | undefined): IVariant {
 	if (!variant) return { ...DISABLED_VARIANT, feature_enabled: true };
-	const result: FlagVariant = {
+	const result: IVariant = {
 		name: variant.name,
 		enabled: variant.enabled,
-		feature_enabled: variant.feature_enabled ?? variant.featureEnabled ?? true,
+		feature_enabled: variant.feature_enabled ?? true,
 	};
 	if (variant.payload) result.payload = variant.payload;
 	return result;
@@ -107,7 +87,7 @@ function toVariant(variant: FrontendApiToggle['variant']): FlagVariant {
  * Picks one flag out of the Frontend API response. The Frontend API leaves out
  * disabled flags, so a missing flag is a normal result: enabled false, disabled variant.
  */
-export function toFlagResult(flagName: string, toggles: FrontendApiToggle[]): FlagResult {
+export function toFlagResult(flagName: string, toggles: IToggle[]): FlagResult {
 	const toggle = toggles.find((candidate) => candidate.name === flagName);
 	if (!toggle) return { name: flagName, enabled: false, variant: { ...DISABLED_VARIANT } };
 	return {
