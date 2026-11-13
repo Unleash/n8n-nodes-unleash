@@ -1,0 +1,170 @@
+{
+  "name": "Flag-gated deploy gate",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ci-build-finished",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "a47c3ded-758b-416f-8001-c10f69a2b677",
+      "name": "CI build finished",
+      "webhookId": "2d187e24-93d8-4d1d-9536-67894566ed5f",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "flagName": "deploy-canary-stage-2",
+        "additionalContext": {
+          "properties": {
+            "property": [
+              {
+                "name": "service",
+                "value": "={{ $json.body.service }}"
+              }
+            ]
+          }
+        },
+        "requestOptions": {}
+      },
+      "type": "@unleash/n8n-nodes-unleash.unleash",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "id": "ca8c906c-de13-4818-819f-3c43809a8e54",
+      "name": "Evaluate a flag",
+      "credentials": {
+        "unleashFrontendApi": {
+          "id": "placeholder",
+          "name": "Unleash Frontend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "632db99c-cfa7-4a46-97bf-35f24ce0d808",
+              "leftValue": "={{ $json.enabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [448, 0],
+      "id": "bb629432-e119-4d6b-aed8-a94202b2307b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "url": "https://your-deploy-api.example.com/deployments",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [672, -96],
+      "id": "fe1c6836-5dfe-4248-b0bc-646ba70290dd",
+      "name": "Trigger deployment (your API)"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"deployed\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [896, -96],
+      "id": "1fce5a8a-e600-4413-9342-b2abc560a6cd",
+      "name": "Respond: deployed"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"blocked\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [672, 96],
+      "id": "b039ba8f-4d8d-4eff-aebd-5e8c46c2a6cc",
+      "name": "Respond: blocked"
+    },
+    {
+      "parameters": {
+        "content": "## Flag-gated deploy gate\n\nA webhook from your CI system triggers the node, with the service name passed in as a custom property under Additional Context. If the flag for that stage is on, the workflow calls your deployment API and responds `deployed`; if it's off, it responds `blocked` without deploying. This turns Unleash into a release gate your pipeline already talks to over HTTP, with no Unleash write access needed anywhere in the pipeline.\n\n**Setup:**\n1. Add a Header Auth credential with a random secret, and have your CI system send it as the `Authorization` header when it calls this webhook's Production URL.\n2. Connect your own Unleash Frontend API token credential.\n3. Point **Trigger deployment (your API)** at your real deployment endpoint — it has no credential of its own here, since that's specific to your API.\n\nWorks on every Unleash plan — only needs a Frontend API token. `deploy-canary-stage-2` and the `service` property are stand-ins for your own flag and strategy constraint.",
+        "height": 280,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -320],
+      "typeVersion": 1,
+      "id": "b907937a-c1d5-49ba-9be7-1b586e2b00c8",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "CI build finished": {
+      "main": [
+        [
+          { "node": "Evaluate a flag", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate a flag": {
+      "main": [
+        [
+          { "node": "If", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          { "node": "Trigger deployment (your API)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Respond: blocked", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Trigger deployment (your API)": {
+      "main": [
+        [
+          { "node": "Respond: deployed", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "name": "Incident kill switch (Enterprise)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "incident-kill-switch",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "webhookId": "a1b2c3d4-0001-4000-8000-100000000001",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://your-unleash-instance/api/admin/mcp",
+        "authentication": "bearerAuth",
+        "tool": {
+          "__rl": true,
+          "value": "kill_switch",
+          "mode": "id"
+        },
+        "inputMode": "json",
+        "jsonInput": "={\n  \"project\": \"default\",\n  \"flag\": {\n    \"name\": \"{{ $json.body.flagName }}\",\n    \"state\": \"disabled\"\n  },\n  \"environment\": \"production\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClient",
+      "typeVersion": 1.1,
+      "position": [224, 0],
+      "id": "a1b2c3d4-0001-4000-8000-000000000002",
+      "name": "Kill switch (MCP)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0001-4000-8000-000000000010",
+              "leftValue": "={{ $json.kind }}",
+              "rightValue": "switched",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [448, 0],
+      "id": "a1b2c3d4-0001-4000-8000-000000000003",
+      "name": "Switched off?"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "incidents",
+          "mode": "name"
+        },
+        "text": "=:white_check_mark: Kill switch applied: `{{ $('Webhook').item.json.body.flagName }}` is now off in production.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [672, -96],
+      "id": "a1b2c3d4-0001-4000-8000-000000000004",
+      "name": "Notify: switched off",
+      "credentials": {
+        "slackApi": {
+          "id": "placeholder",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "incidents",
+          "mode": "name"
+        },
+        "text": "=:warning: Kill switch for `{{ $('Webhook').item.json.body.flagName }}` did not switch the flag off directly — result: `{{ $json.kind }}`. It may need a change request approval, or the call failed. Check Unleash.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [672, 96],
+      "id": "a1b2c3d4-0001-4000-8000-000000000005",
+      "name": "Notify: needs attention",
+      "credentials": {
+        "slackApi": {
+          "id": "placeholder",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Incident kill switch (Enterprise)\n\nAn alert from Datadog, PagerDuty, or any tool that can call a webhook turns a feature off through the Unleash MCP server, then posts the result to Slack.\n\n**Requires Unleash Enterprise** — the MCP server is Enterprise-only. [Start a trial](https://www.getunleash.io/plans/enterprise-payg).\n\n**Setup:**\n1. In your alerting tool, add a webhook action that POSTs to this workflow's Production URL, with a secret in a header your tool supports — match it in the Webhook node's Header Auth credential.\n2. The `Kill switch (MCP)` node's JSON input assumes your alert payload has a `flagName` field at `body.flagName`. Replace that expression with however your tool actually names the flag in its payload.\n3. Connect your own Bearer token credential (a personal access token) to both the MCP node and turn on the Remote MCP Server under Admin > Unleash in your instance.\n4. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\n`kill_switch` opens a change request instead of switching the flag directly when your environment requires one — the second Slack message covers that case. Tested against the tool's input schema in the `unleash-mcp` source; the exact response shape (`$json.kind`) has not been verified end to end against a live server, since this repo doesn't have Enterprise access. Re-check after your first real run.",
+        "height": 340,
+        "width": 460
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -280],
+      "typeVersion": 1,
+      "id": "a1b2c3d4-0001-4000-8000-000000000006",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Kill switch (MCP)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Kill switch (MCP)": {
+      "main": [
+        [
+          { "node": "Switched off?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Switched off?": {
+      "main": [
+        [
+          { "node": "Notify: switched off", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Notify: needs attention", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

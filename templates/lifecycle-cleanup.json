@@ -1,0 +1,180 @@
+{
+  "name": "Lifecycle cleanup",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "unleash-lifecycle",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "3a25da65-e9c9-40a4-8d8d-b3c7ed6ca7b7",
+      "name": "Webhook",
+      "webhookId": "801ef309-3d67-4e27-8642-8cc5c53ba3c7",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "body.events",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1.1,
+      "position": [224, 0],
+      "id": "29cea5b2-d62c-4258-8a4e-6e82833e05be",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "feature-potentially-stale-on",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "373311e0-62ac-4243-93e3-70671ed1de1e"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "4916db71-eb4b-4313-a746-38087a3b9632",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "feature-completed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [448, 0],
+      "id": "8c68ca35-bc92-4b94-be8d-3571768abd37",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "removeItemsSeenInPreviousExecutions",
+        "dedupeValue": "={{ $json.id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 2,
+      "position": [672, -96],
+      "id": "aee2d690-367c-4ccd-8bf4-f9cdb7ddf7c7",
+      "name": "Remove Duplicates"
+    },
+    {
+      "parameters": {
+        "project": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "issueType": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "summary": "=Unleash flag needs cleanup: {{ $json.featureName }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.jira",
+      "typeVersion": 1,
+      "position": [896, -96],
+      "id": "d453b933-a5ae-4da7-9f61-78ff95ca1d0a",
+      "name": "Create an issue"
+    },
+    {
+      "parameters": {
+        "content": "## Lifecycle cleanup\n\nUnleash sends a webhook on every flag event. This template picks out the lifecycle events that call for cleanup — **potentially stale** and **completed** — and opens a Jira ticket for the flag's creator.\n\n**Setup in Unleash:** Integrations > Webhook. Point it at this workflow's Production URL and put the same secret in the Authorization field.\n\nDeduplicates on the event **id**, since Unleash retries a failed delivery once and events can arrive twice or out of order.\n\nConnect your own Jira credential and pick a Project and Issue Type.\n\nWorks on every Unleash plan.",
+        "height": 220,
+        "width": 420
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [192, -300],
+      "typeVersion": 1,
+      "id": "d3b1841e-0ceb-4728-b5a8-0734a8cb5e5f",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Split Out", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          { "node": "Switch", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          { "node": "Remove Duplicates", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Remove Duplicates", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          { "node": "Create an issue", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

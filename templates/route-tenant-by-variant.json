@@ -1,0 +1,247 @@
+{
+  "name": "Route a tenant by variant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pricing-request",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "1c5af3ce-7366-483c-9244-3f3ab8e584b5",
+      "name": "Pricing request received",
+      "webhookId": "c86622ce-da1a-46e7-b469-a8125c4b7cd8",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "flagName": "agent-prompt-variant",
+        "userId": "={{ $json.body.tenantId }}",
+        "additionalContext": {},
+        "requestOptions": {}
+      },
+      "type": "@unleash/n8n-nodes-unleash.unleash",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "id": "65a4b8a6-21a7-4033-aae6-13660b061239",
+      "name": "Evaluate a flag",
+      "credentials": {
+        "unleashFrontendApi": {
+          "id": "placeholder",
+          "name": "Unleash Frontend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "c7362e44-a73d-4adc-b187-ce3b3caef162",
+                    "leftValue": "={{ $json.variant.name }}",
+                    "rightValue": "legacy",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 4
+                },
+                "conditions": [
+                  {
+                    "id": "6e3f4e68-32b4-469e-8e7e-a30638a67fd4",
+                    "leftValue": "={{ $json.variant.name }}",
+                    "rightValue": "v2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.5,
+      "position": [448, 0],
+      "id": "28095722-b9d2-43c1-89c3-ea6d9d818f4e",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_LEGACY_PRICING_WORKFLOW_ID",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/YOUR_LEGACY_PRICING_WORKFLOW_ID"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [672, -96],
+      "id": "a011f8af-28a8-438a-8534-26052d7900d7",
+      "name": "Run: legacy pricing workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_V2_PRICING_WORKFLOW_ID",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/YOUR_V2_PRICING_WORKFLOW_ID"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [672, 96],
+      "id": "9672965c-c139-4007-ac7f-51dd3fd581a6",
+      "name": "Run: v2 pricing workflow"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [896, 0],
+      "id": "1bce0566-e8f9-44bb-a5b5-de1b43b69ac1",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "pricing-routing-log",
+          "mode": "name"
+        },
+        "text": "=Tenant `{{ $('Pricing request received').item.json.body.tenantId }}` got variant `{{ $('Evaluate a flag').item.json.variant.name }}`.",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [1120, 0],
+      "id": "2d56bfb6-be31-4a85-82cb-9485877136c3",
+      "name": "Log the variant served",
+      "credentials": {
+        "slackApi": {
+          "id": "placeholder",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Route a tenant by variant\n\nEvaluate with the tenant ID as the **User ID**, so stickiness keeps the same tenant on the same variant across requests. A **Switch** node reads `{{ $json.variant.name }}` and calls one of two sub-workflows with **Execute Workflow** — stand-ins here for two versions of the same process (two pricing engines, two agent prompts, two notification templates — whatever you're routing). **Merge** brings the branches back together before logging which variant served the tenant.\n\n**Setup:**\n1. Add a Header Auth credential with a random secret for the webhook, and connect your own Unleash Frontend API token credential.\n2. Point each Execute Workflow node at your own sub-workflow, by ID.\n3. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\nBecause the Unleash variant drives the routing, you can move a tenant to the new version, or change the rollout percentage, without redeploying this workflow. `legacy` and `v2` are placeholder variant names — replace them with the names configured on your flag.",
+        "height": 300,
+        "width": 440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -320],
+      "typeVersion": 1,
+      "id": "6c94a480-c574-443e-8cd6-adc5d1817bd5",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Pricing request received": {
+      "main": [
+        [
+          { "node": "Evaluate a flag", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate a flag": {
+      "main": [
+        [
+          { "node": "Switch", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          { "node": "Run: legacy pricing workflow", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Run: v2 pricing workflow", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Run: legacy pricing workflow": {
+      "main": [
+        [
+          { "node": "Merge", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Run: v2 pricing workflow": {
+      "main": [
+        [
+          { "node": "Merge", "type": "main", "index": 1 }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          { "node": "Log the variant served", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

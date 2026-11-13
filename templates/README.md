@@ -1,0 +1,55 @@
+# Templates
+
+Ten ready-made n8n workflows — the [build spec](https://docs.n8n.io/integrations/community-nodes/build-community-nodes/)'s original six, plus four adapted from the worked examples in the main [README](../README.md) — exported as workflow JSON. Each file is a complete n8n workflow: nodes, their settings, and sticky notes that explain the workflow. Import one with **n8n's `...` menu > Import > From File** (or, on n8n versions before 3.0, **Import > From URL** if you host the raw file — that option is removed in 3.0), add your own credentials, and run it.
+
+This folder is the source of truth for these templates — the place to review and version them, test them against new MCP server releases, and link to directly from docs or the landing page. It's also the staging area before submitting to the [n8n template gallery](https://n8n.io/workflows/), which reviews every submission against its [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/).
+
+## The ten templates
+
+| Template | Plan | Built from | Tested |
+|---|---|---|---|
+| [`agent-kill-switch.json`](agent-kill-switch.json) — Agent kill switch: evaluate a flag at the start of an agent workflow and stop when it's off | All plans | Unleash node, If node | ✅ Built and run end to end against a local Unleash instance and this node, both branches (flag on / flag off) |
+| [`lifecycle-cleanup.json`](lifecycle-cleanup.json) — Lifecycle cleanup: a flag goes potentially stale or completed, open a Jira ticket for its creator | All plans | Webhook node | ✅ Built and run end to end against the local Unleash instance's real webhook payload shape, including dedup on a duplicate event. The Jira step is structurally correct (`n8n-nodes-base.jira`) but wasn't run against a live Jira — connect your own credential and pick a project/issue type |
+| [`guarded-automation.json`](guarded-automation.json) — Guarded automation: pause a scheduled automation with a kill switch | All plans | Unleash node, If node | ✅ Matches the workflow already built and run end to end in n8n for the main README's screenshot (`docs/images/guarded-automation.png`) — imports cleanly here, but wasn't independently re-run against a live Unleash instance in this verification pass |
+| [`flag-gated-deploy-gate.json`](flag-gated-deploy-gate.json) — Flag-gated deploy gate: let CI call a webhook, gate the deploy on a flag | All plans | Unleash node, If node, HTTP Request | ✅/⚠️ Matches the workflow built for `docs/images/flag-gated-deploy-gate.png` — the `blocked` branch ran successfully there; the `deployed` branch's HTTP Request intentionally points at a placeholder API and errors, exactly as the screenshot shows. Imports cleanly here |
+| [`route-tenant-by-variant.json`](route-tenant-by-variant.json) — Route a tenant by variant: send different tenants to different sub-workflows by Unleash variant | All plans | Unleash node, Switch, Execute Workflow, Merge | ✅ Matches the workflow built for `docs/images/route-tenant-by-variant.png`, run end to end there except the Slack step (no real workspace in this repo). Imports cleanly here. `legacy`/`v2` are placeholder variant names — use your own |
+| [`gate-ai-agent-tools-by-flag.json`](gate-ai-agent-tools-by-flag.json) — Gate an AI agent's tools by flag: give an agent an extra, risky tool only when a flag is on | All plans | Unleash node, If node, AI Agent | ⚠️ Matches the workflow built for `docs/images/gate-ai-agent-tools-by-flag.png` — only the advanced branch ran there, and it errors without a Chat Model attached (intentional, to spotlight the tool gating; see the sticky note). Imports cleanly here |
+| [`incident-kill-switch.json`](incident-kill-switch.json) — Incident kill switch (Enterprise): an alert from Datadog or PagerDuty turns a feature off, then posts to Slack | Enterprise | MCP Client (`kill_switch`) | ⚠️ Structural only — imports cleanly and the MCP tool arguments match the verified input schema in the `unleash-mcp` source, but this repo has no Enterprise instance to run it against. The `$json.body.flagName` mapping is a placeholder for whatever your alerting tool actually sends |
+| [`weekly-cleanup-sweep.json`](weekly-cleanup-sweep.json) — Weekly cleanup sweep (Enterprise): find flags in the completed stage that still get traffic | Enterprise | MCP Client (`search`, `inspect`) | ⚠️ Structural only — same caveat. Input and output field names (`results[0].flags`, `results[0].totals.requests`) are verified against the `unleash-mcp` source, not against a live call |
+| [`change-request-approvals.json`](change-request-approvals.json) — Change request approvals (Enterprise): post requests sent to review to the approvers' Slack channel, confirm when applied | Enterprise | Webhook node | ⚠️ Structural only — the webhook/Switch/dedup shape is the same one verified end to end in `lifecycle-cleanup.json`, but change request events only fire on Enterprise, so the event payload itself hasn't been run live |
+| [`ops-agent-in-slack.json`](ops-agent-in-slack.json) — Unleash ops agent in Slack (Enterprise): answers "what changed in production today?" and rolls out on request | Enterprise | AI Agent, MCP Client Tool | ⚠️ Structural only — the Slack Trigger's `$json.channel` field (used to reply in the same channel) hasn't been verified against a real Slack event in this repo |
+
+All ten import cleanly into n8n (checked by importing each file into a local instance). "Tested" above means run against something real, not just "imports without errors."
+
+## Uses the community node
+
+Five templates depend on `@unleash/n8n-nodes-unleash` (tested at **v0.1.0**, the version in this repo's `package.json`): **Agent kill switch**, **Guarded automation**, **Flag-gated deploy gate**, **Route a tenant by variant** and **Gate an AI agent's tools by flag**. The other five use only n8n's own built-in nodes (Webhook, If, Switch, Remove Duplicates, Slack, Jira, Schedule Trigger, AI Agent, MCP Client). That means those five can go to the gallery before the node itself is verified — the Enterprise ones also need an Enterprise trial to actually exercise, independent of the node.
+
+## Enterprise requirement
+
+The four Enterprise templates all call the Unleash MCP server, which Unleash Enterprise hosts at `https://<instance>/api/admin/mcp` — see the [MCP integration docs](https://docs.getunleash.io/integrate/mcp). Each one's sticky note links to [Unleash's Enterprise trial](https://www.getunleash.io/plans/enterprise-payg) and carries "(Enterprise)" in its title, matching the n8n gallery convention for plan-gated templates.
+
+## n8n 3.0 compatibility
+
+n8n 3.0 ships its own [breaking-changes list](https://docs.n8n.io/changelog/v30-breaking-changes) (beta out now, [stable expected early December 2026](https://blog.n8n.io/introducing-n8n-v3)). We checked all ten templates and the node itself against every rule in it:
+
+- **Nothing here uses a removed or changed node type, version, or expression helper.** No legacy Function/Cron/old-AI nodes, no `$getPairedItem` or `$evaluateExpression()`, no `alwaysOutputData` on a multi-output node. Every AI Agent node here is already on v3.1 (v2 is the floor n8n 3.0 keeps), and the Execute Workflow node in `route-tenant-by-variant.json` already sources from Database, not the Local File/URL modes that are removed.
+- **Slack API credentials need a Signature Secret to be saved on n8n 3.0+, and a Slack Trigger can't be activated without one.** The five templates that use a Slack credential (`incident-kill-switch.json`, `weekly-cleanup-sweep.json`, `change-request-approvals.json`, `route-tenant-by-variant.json`, `ops-agent-in-slack.json`) now say so in their sticky notes — `ops-agent-in-slack.json`'s Slack Trigger is the one this actually blocks from activating, not just the credential save.
+- **"Import > From URL" is removed from the editor in n8n 3.0** — the instructions at the top of this file now call it out as a pre-3.0 option; "Import > From File" keeps working on every version.
+- **The node package itself needs no code changes.** It has no runtime dependencies — `unleash-proxy-client` is a type-only import, compiled out of `dist/` entirely — so it already meets the no-runtime-dependency requirement for n8n's separate Verified Community Node Program.
+- **Not addressed here on purpose:** n8n 3.0 also flips `N8N_UNVERIFIED_PACKAGES_ENABLED` to `false` by default, so an unverified community package — which `@unleash/n8n-nodes-unleash` still is — stops loading unless an instance sets that variable explicitly. We're deferring documenting that until promotion starts, on the assumption the node will be verified by then. If verification is still pending when n8n 3.0 ships, this is the variable to document.
+
+Everything else in n8n 3.0's breaking-changes list — Docker-only deployment, task runner and storage defaults, external secrets role defaults, the chat hub, and so on — is an instance-level or deployment concern, not something a workflow template or this node is affected by.
+
+## Before submitting to the gallery
+
+Per n8n's [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/):
+- [x] Each template names a practical use case (above).
+- [x] Each template was tested by importing the exact JSON here into a fresh workflow.
+- [x] An image for each of the four new community-node templates — reused directly from the main README's worked examples, since the workflows are the same ones shown there (`docs/images/guarded-automation.png`, `flag-gated-deploy-gate.png`, `route-tenant-by-variant.png`, `gate-ai-agent-tools-by-flag.png`).
+- [ ] **Not yet done:** an image for `agent-kill-switch.json`, the one remaining community-node template without one, in case the gallery's auto-generated preview doesn't render.
+- [x] `agent-kill-switch.json` and the four new community-node templates all name `@unleash/n8n-nodes-unleash` and its tested version (0.1.0) above.
+
+## A note on scope
+
+Submission itself — creating an n8n Creator Portal account and uploading these — is a decision for a person, not something this repo automates: whether the account belongs to Unleash or an individual shows up on every published template's creator profile, and new creators can only submit one template at a time until they reach three approvals. That decision, and the one-at-a-time submission order, are tracked outside this folder.
