@@ -1,0 +1,184 @@
+{
+  "name": "Gate an AI agent's tools by flag",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "support-request",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [0, 0],
+      "id": "948bde87-56f2-40b9-bc1d-4e90776847b6",
+      "name": "Support request received",
+      "webhookId": "0483fb4a-19dd-4520-b970-42c80437df85",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "placeholder",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "flagName": "agent-advanced-tools",
+        "additionalContext": {},
+        "requestOptions": {}
+      },
+      "type": "@unleash/n8n-nodes-unleash.unleash",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "id": "235da26a-2af4-4ecf-b4ff-d578814651f5",
+      "name": "Evaluate a flag",
+      "credentials": {
+        "unleashFrontendApi": {
+          "id": "placeholder",
+          "name": "Unleash Frontend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "b03f8d14-9729-48ed-8760-a6236708a671",
+              "leftValue": "={{ $json.enabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [448, 0],
+      "id": "31d539ab-3bbf-489f-b1c0-f14ecfb9b1f6",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [672, -160],
+      "id": "50eb330f-2079-4b76-8d82-ad8c85f8d525",
+      "name": "Support agent (advanced)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.2,
+      "position": [672, -16],
+      "id": "1fc7e6a3-2eac-4593-902a-83dbb8c6a2a8",
+      "name": "Send refund email",
+      "webhookId": "639c5bba-dac2-424d-8474-33facc4c4fdc"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [672, 160],
+      "id": "e1ca7e4f-13f6-4e10-9146-6f6d3ae964bb",
+      "name": "Support agent (standard)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [560, 320],
+      "id": "34ed2bb3-5fa7-4aaf-9cb0-59b0d53176f9",
+      "name": "Anthropic Chat Model"
+    },
+    {
+      "parameters": {
+        "content": "## Gate an AI agent's tools by flag\n\nA tool attached to an AI Agent node is always available to the model — there's no built-in way to show or hide one tool based on a condition. To gate a tool, evaluate a flag first and use an **If** node to route to one of two agents: one wired to only the tools you're comfortable the model always has (**Support agent (standard)**), the other wired to the same tools plus the one that takes a real action — here, sending an email (**Support agent (advanced)**). Turning the flag off removes the tool itself, not just a check the model could ignore or route around.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential, and a Header Auth credential for the webhook.\n2. **Support agent (advanced)** only has its Gmail Tool wired here, to spotlight the gating — attach a Chat Model to it too, the same way **Support agent (standard)** has one, before you run this for real.\n3. Connect your own Gmail credential to **Send refund email**, and your own model credential to the Chat Model node(s) — Anthropic is shown here, swap for any model the AI Agent node supports.\n\nWorks on every Unleash plan — only needs a Frontend API token.",
+        "height": 320,
+        "width": 440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -320],
+      "typeVersion": 1,
+      "id": "342f2011-3047-4c67-98d4-9b5f4b4aed59",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Support request received": {
+      "main": [
+        [
+          { "node": "Evaluate a flag", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate a flag": {
+      "main": [
+        [
+          { "node": "If", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          { "node": "Support agent (advanced)", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Support agent (standard)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send refund email": {
+      "ai_tool": [
+        [
+          { "node": "Support agent (advanced)", "type": "ai_tool", "index": 0 }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          { "node": "Support agent (standard)", "type": "ai_languageModel", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

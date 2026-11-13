@@ -1,0 +1,131 @@
+{
+  "name": "Guarded automation (kill switch)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "hours" }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [0, 0],
+      "id": "3d25a324-16dc-4b4c-9862-4885a8706c8d",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "flagName": "ops-automation-enabled",
+        "additionalContext": {},
+        "requestOptions": {}
+      },
+      "type": "@unleash/n8n-nodes-unleash.unleash",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "id": "c84dec57-3240-484a-a054-eff6ca0780be",
+      "name": "Evaluate a flag",
+      "credentials": {
+        "unleashFrontendApi": {
+          "id": "placeholder",
+          "name": "Unleash Frontend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "ff994a43-c45b-4df3-a45f-ff6bf2ca7ee4",
+              "leftValue": "={{ $json.enabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [448, 0],
+      "id": "e8a4329c-fcf2-49e6-8129-5b50d92464c9",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [672, -96],
+      "id": "601728c1-9f4c-4d9e-9a1b-b64a1ec20306",
+      "name": "Run the automation"
+    },
+    {
+      "parameters": {
+        "errorMessage": "This automation is disabled by the ops-automation-enabled kill switch."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [672, 96],
+      "id": "a8f1d00b-4454-47fb-b461-c2b40bf62a02",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "content": "## Guarded automation (kill switch)\n\nRuns every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — **Run the automation** is a No Operation node standing in for the real work. If it's off, the workflow stops with **Stop and Error** instead. Turning the flag off in Unleash pauses the automation without touching this workflow.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential.\n2. Replace **Run the automation** with your real steps, and set the Schedule Trigger's interval to match.\n\nWorks on every Unleash plan — only needs a Frontend API token.",
+        "height": 220,
+        "width": 340
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [0, -280],
+      "typeVersion": 1,
+      "id": "a389a19d-4517-446b-82ce-bc069e89d52c",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          { "node": "Evaluate a flag", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate a flag": {
+      "main": [
+        [
+          { "node": "If", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          { "node": "Run the automation", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Stop and Error", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

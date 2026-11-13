@@ -147,7 +147,7 @@ Evaluate with the tenant ID as the **User ID**, so [stickiness](https://docs.get
 
 ### Ready-made templates
 
-The [`/templates`](templates) folder has six full workflows exported as JSON, ready to import: two that work on every plan (an agent kill switch and a lifecycle-driven Jira ticket), and four Enterprise ones that call the Unleash MCP server (an incident kill switch, a weekly cleanup sweep, change request approvals, and a Slack ops agent). See [`templates/README.md`](templates/README.md) for what's tested and what each one needs.
+The [`/templates`](templates) folder has ten full workflows exported as JSON, ready to import: six that work on every plan (the agent kill switch, a lifecycle-driven Jira ticket, and the four worked examples above as their own files — guarded automation, the deploy gate, variant routing, and agent tool gating), and four Enterprise ones that call the Unleash MCP server (an incident kill switch, a weekly cleanup sweep, change request approvals, and a Slack ops agent). See [`templates/README.md`](templates/README.md) for what's tested and what each one needs.
 
 ### More patterns
 
