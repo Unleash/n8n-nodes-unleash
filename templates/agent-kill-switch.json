@@ -1,0 +1,128 @@
+{
+  "name": "Agent kill switch",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [0, 0],
+      "id": "eb669c64-4787-48b7-8cab-2891a9b804e0",
+      "name": "When chat message received",
+      "webhookId": "d07cc6be-a5d8-42e0-b901-663c0275802c"
+    },
+    {
+      "parameters": {
+        "flagName": "disable-checkout-agent",
+        "additionalContext": {},
+        "requestOptions": {}
+      },
+      "type": "@unleash/n8n-nodes-unleash.unleash",
+      "typeVersion": 1,
+      "position": [224, 0],
+      "id": "d57760d3-b6e4-42df-aa39-ff08d9d71dff",
+      "name": "Evaluate a flag",
+      "credentials": {
+        "unleashFrontendApi": {
+          "id": "placeholder",
+          "name": "Unleash Frontend account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "c9bd9016-32a8-4cf6-9d12-34520141e04d",
+              "leftValue": "={{ $json.enabled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [448, 0],
+      "id": "ea25758e-be85-47c6-b8fb-1488bf30262b",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [672, -96],
+      "id": "5b017803-014f-4915-98ac-78964dcb440d",
+      "name": "Rest of your agent workflow"
+    },
+    {
+      "parameters": {
+        "errorMessage": "Checkout agent is disabled by the disable-checkout-agent kill switch."
+      },
+      "type": "n8n-nodes-base.stopAndError",
+      "typeVersion": 1,
+      "position": [672, 96],
+      "id": "c2a83bec-5ba0-43c0-928f-25639650b0c3",
+      "name": "Stop and Error"
+    },
+    {
+      "parameters": {
+        "content": "## Agent kill switch\n\nEvaluate a flag before an agent workflow runs. If the flag is off, stop the workflow instead of letting the agent act.\n\nSwap in your own trigger and replace **Rest of your agent workflow** with the real agent steps (AI Agent, tool calls, etc).\n\nWorks on every Unleash plan — only needs a Frontend API token.",
+        "height": 200,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [192, -240],
+      "id": "82c5cee6-9819-498d-84c3-d1ddd85d7743",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          { "node": "Evaluate a flag", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Evaluate a flag": {
+      "main": [
+        [
+          { "node": "If", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          { "node": "Rest of your agent workflow", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Stop and Error", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

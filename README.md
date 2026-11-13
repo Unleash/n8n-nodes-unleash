@@ -145,6 +145,10 @@ A webhook from your CI system triggers the node, with the service name passed in
 
 Evaluate with the tenant ID as the **User ID**, so [stickiness](https://docs.getunleash.io/concepts/stickiness) keeps the same tenant on the same variant across requests. A **Switch** node reads `{{ $json.variant.name }}` and calls one of two sub-workflows with **Execute Workflow** — stand-ins here for two versions of the same process, for example two pricing engines, two system prompts for an AI agent, or two notification templates. **Merge** brings the branches back together before logging which variant served the tenant. Because the Unleash variant drives the routing, you can move a tenant to the new version, or change the rollout percentage, without redeploying the workflow.
 
+### Ready-made templates
+
+The [`/templates`](templates) folder has six full workflows exported as JSON, ready to import: two that work on every plan (an agent kill switch and a lifecycle-driven Jira ticket), and four Enterprise ones that call the Unleash MCP server (an incident kill switch, a weekly cleanup sweep, change request approvals, and a Slack ops agent). See [`templates/README.md`](templates/README.md) for what's tested and what each one needs.
+
 ### More patterns
 
 | Pattern                                                                           | Nodes you'd pair it with                                                                              |
