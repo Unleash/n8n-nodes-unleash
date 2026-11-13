@@ -10,6 +10,7 @@ The node evaluates flags through the Unleash [Frontend API](https://docs.getunle
 - [Use it as an AI agent tool](#use-it-as-an-ai-agent-tool)
 - [React to flag changes](#react-to-flag-changes)
 - [Change flags from n8n](#change-flags-from-n8n)
+- [Example workflows](#example-workflows)
 - [Compatibility](#compatibility)
 - [Development](#development)
 
@@ -83,6 +84,12 @@ Set a **User ID** or **Session ID** whenever a flag uses a gradual rollout. With
 
 The node can be attached to an **AI Agent** node as a tool, so an agent can check a flag before it acts. A common pattern is a kill switch for an agent: evaluate a flag at the start of the workflow and stop when it's off.
 
+### Give the agent more tools only when a flag is on
+
+![Two AI Agent branches, one with just a Chat Model and one that also has a Gmail Tool, gated by an Unleash flag](docs/images/gate-ai-agent-tools-by-flag.png)
+
+A tool you attach to an AI Agent node is always available to the model; there's no built-in way to show or hide one tool based on a condition. To gate a tool, evaluate a flag first and use an **If** node to route to one of two AI Agent nodes: one wired to only the tools you're comfortable the model always has, the other wired to the same tools plus the one that takes a real action (sending an email, changing a record, calling a paid API). Turning the flag off removes the tool itself, not just a check the model could ignore or route around.
+
 ## React to flag changes
 
 Unleash can send flag events to n8n through its Webhook integration and n8n's built-in Webhook node. No extra node is needed.
@@ -115,6 +122,37 @@ See the Unleash [Webhook integration docs](https://docs.getunleash.io/integrate/
 ## Change flags from n8n
 
 This node only reads flags. To change them (turn flags on or off, roll out, kill switches, clean up), connect n8n's built-in [MCP Client](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcpclient) or [MCP Client Tool](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp) node to the [Unleash MCP server](https://docs.getunleash.io/integrate/mcp). The remote MCP server is available on Unleash Enterprise. It opens change requests where your environments require them.
+
+## Example workflows
+
+Each pattern below was built and run in n8n. A node you'd still need to configure yourself (an HTTP endpoint, a Slack channel, your own sub-workflows) is left unconfigured in the screenshot, so you can see the shape of the workflow without copying placeholder values out of it.
+
+### Guard a scheduled automation with a kill switch
+
+![Schedule Trigger, Evaluate a flag, an If node, then either a No Operation node or Stop and Error](docs/images/guarded-automation.png)
+
+A Schedule Trigger runs some automation every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — here a **No Operation** node stands in for the real work. If it's off, the workflow stops with **Stop and Error**. Turning the flag off in Unleash pauses the automation without touching the workflow in n8n.
+
+### Gate a deploy on a flag, from CI
+
+![Webhook, Evaluate a flag with a service name in Additional Context, an If node, then an HTTP Request and two Respond to Webhook nodes](docs/images/flag-gated-deploy-gate.png)
+
+A webhook from your CI system triggers the node, with the service name passed in as a custom property under Additional Context. If the flag for that stage is on, the workflow calls your deployment API and responds `deployed`; if it's off, it responds `blocked` without deploying. This turns Unleash into a release gate your pipeline already talks to over HTTP, with no Unleash write access needed anywhere in the pipeline.
+
+### Route a tenant to a different workflow by variant
+
+![Webhook, Evaluate a flag with the tenant ID as User ID, a Switch node on the variant name, two Execute Workflow nodes, a Merge and a Slack node](docs/images/route-tenant-by-variant.png)
+
+Evaluate with the tenant ID as the **User ID**, so [stickiness](https://docs.getunleash.io/concepts/stickiness) keeps the same tenant on the same variant across requests. A **Switch** node reads `{{ $json.variant.name }}` and calls one of two sub-workflows with **Execute Workflow** — stand-ins here for two versions of the same process, for example two pricing engines, two system prompts for an AI agent, or two notification templates. **Merge** brings the branches back together before logging which variant served the tenant. Because the Unleash variant drives the routing, you can move a tenant to the new version, or change the rollout percentage, without redeploying the workflow.
+
+### More patterns
+
+| Pattern                                                                           | Nodes you'd pair it with                                                                              |
+| --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Weekly digest of flags that look stale                                            | Schedule Trigger, **Get Enabled**, Filter, Slack or Gmail                                             |
+| Audit trail of flag changes (see [React to flag changes](#react-to-flag-changes)) | Webhook, Set, Google Sheets, Airtable or Postgres                                                     |
+| On-call alert when a kill switch flips off                                        | The webhook from React to flag changes, Switch, Slack, Microsoft Teams or PagerDuty                   |
+| Per-customer entitlement check                                                    | **Evaluate** with User ID set to the customer ID, If, HubSpot or Salesforce to look up the plan first |
 
 ## Compatibility
 
