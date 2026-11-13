@@ -1,6 +1,6 @@
 # Templates
 
-Ten ready-made n8n workflows — the [build spec](https://docs.n8n.io/integrations/community-nodes/build-community-nodes/)'s original six, plus four adapted from the worked examples in the main [README](../README.md) — exported as workflow JSON. Each file is a complete n8n workflow: nodes, their settings, and sticky notes that explain the workflow. Import one with **n8n's `...` menu > Import > From File** (or **Import > From URL** if you host the raw file), add your own credentials, and run it.
+Ten ready-made n8n workflows — the [build spec](https://docs.n8n.io/integrations/community-nodes/build-community-nodes/)'s original six, plus four adapted from the worked examples in the main [README](../README.md) — exported as workflow JSON. Each file is a complete n8n workflow: nodes, their settings, and sticky notes that explain the workflow. Import one with **n8n's `...` menu > Import > From File** (or, on n8n versions before 3.0, **Import > From URL** if you host the raw file — that option is removed in 3.0), add your own credentials, and run it.
 
 This folder is the source of truth for these templates — the place to review and version them, test them against new MCP server releases, and link to directly from docs or the landing page. It's also the staging area before submitting to the [n8n template gallery](https://n8n.io/workflows/), which reviews every submission against its [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/).
 
@@ -28,6 +28,18 @@ Five templates depend on `@unleash/n8n-nodes-unleash` (tested at **v0.1.0**, the
 ## Enterprise requirement
 
 The four Enterprise templates all call the Unleash MCP server, which Unleash Enterprise hosts at `https://<instance>/api/admin/mcp` — see the [MCP integration docs](https://docs.getunleash.io/integrate/mcp). Each one's sticky note links to [Unleash's Enterprise trial](https://www.getunleash.io/plans/enterprise-payg) and carries "(Enterprise)" in its title, matching the n8n gallery convention for plan-gated templates.
+
+## n8n 3.0 compatibility
+
+n8n 3.0 ships its own [breaking-changes list](https://docs.n8n.io/changelog/v30-breaking-changes) (beta out now, [stable expected early December 2026](https://blog.n8n.io/introducing-n8n-v3)). We checked all ten templates and the node itself against every rule in it:
+
+- **Nothing here uses a removed or changed node type, version, or expression helper.** No legacy Function/Cron/old-AI nodes, no `$getPairedItem` or `$evaluateExpression()`, no `alwaysOutputData` on a multi-output node. Every AI Agent node here is already on v3.1 (v2 is the floor n8n 3.0 keeps), and the Execute Workflow node in `route-tenant-by-variant.json` already sources from Database, not the Local File/URL modes that are removed.
+- **Slack API credentials need a Signature Secret to be saved on n8n 3.0+, and a Slack Trigger can't be activated without one.** The five templates that use a Slack credential (`incident-kill-switch.json`, `weekly-cleanup-sweep.json`, `change-request-approvals.json`, `route-tenant-by-variant.json`, `ops-agent-in-slack.json`) now say so in their sticky notes — `ops-agent-in-slack.json`'s Slack Trigger is the one this actually blocks from activating, not just the credential save.
+- **"Import > From URL" is removed from the editor in n8n 3.0** — the instructions at the top of this file now call it out as a pre-3.0 option; "Import > From File" keeps working on every version.
+- **The node package itself needs no code changes.** It has no runtime dependencies — `unleash-proxy-client` is a type-only import, compiled out of `dist/` entirely — so it already meets the no-runtime-dependency requirement for n8n's separate Verified Community Node Program.
+- **Not addressed here on purpose:** n8n 3.0 also flips `N8N_UNVERIFIED_PACKAGES_ENABLED` to `false` by default, so an unverified community package — which `@unleash/n8n-nodes-unleash` still is — stops loading unless an instance sets that variable explicitly. We're deferring documenting that until promotion starts, on the assumption the node will be verified by then. If verification is still pending when n8n 3.0 ships, this is the variable to document.
+
+Everything else in n8n 3.0's breaking-changes list — Docker-only deployment, task runner and storage defaults, external secrets role defaults, the chat hub, and so on — is an instance-level or deployment concern, not something a workflow template or this node is affected by.
 
 ## Before submitting to the gallery
 
