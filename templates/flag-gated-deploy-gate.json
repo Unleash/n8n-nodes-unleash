@@ -33,8 +33,7 @@
               }
             ]
           }
-        },
-        "requestOptions": {}
+        }
       },
       "type": "@unleash/n8n-nodes-unleash.unleash",
       "typeVersion": 1,

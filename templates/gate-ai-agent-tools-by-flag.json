@@ -24,8 +24,7 @@
     {
       "parameters": {
         "flagName": "agent-advanced-tools",
-        "additionalContext": {},
-        "requestOptions": {}
+        "additionalContext": {}
       },
       "type": "@unleash/n8n-nodes-unleash.unleash",
       "typeVersion": 1,

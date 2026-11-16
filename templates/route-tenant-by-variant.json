@@ -25,8 +25,7 @@
       "parameters": {
         "flagName": "agent-prompt-variant",
         "userId": "={{ $json.body.tenantId }}",
-        "additionalContext": {},
-        "requestOptions": {}
+        "additionalContext": {}
       },
       "type": "@unleash/n8n-nodes-unleash.unleash",
       "typeVersion": 1,

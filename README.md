@@ -37,7 +37,7 @@ Frontend tokens are built to be shared with client-side apps: they can only read
 
 ## Operations
 
-The node has one resource, **Flag**, with two operations. Both take the same context fields.
+The node has one resource, **Flag**, with two operations. Both take the same context fields, and both cache their result for 30 seconds by default — see [Caching](#caching) below.
 
 ### Evaluate
 
@@ -60,13 +60,23 @@ A flag that is disabled, archived, unknown or outside the token's projects retur
 
 Use an **If** or **Switch** node on `{{ $json.enabled }}` or `{{ $json.variant.name }}` to branch. A variant payload is returned as a string; parse a JSON payload with `{{ JSON.parse($json.variant.payload.value) }}`.
 
-**Report Usage** is on by default. Each evaluation then sends one usage metric to Unleash, so flags that are only used in n8n still show as in use, and n8n appears among the connected SDKs (as `n8n-nodes-unleash`). If the metric can't be sent, the node logs a warning and the workflow carries on.
+**Server Type** defaults to **Unleash**, which fetches every flag for the context and picks this one out of the list — the only option a standard Unleash server supports. Set it to **Unleash Edge** to use Edge's own single-feature endpoint instead, which fetches only this flag. This only works when the Base URL above points at Unleash Edge, not a standard Unleash server.
+
+**Report Usage** is off by default. Turn it on to send a usage metric to Unleash for every evaluation, so flags that are only used in n8n still show as in use, and n8n appears among the connected SDKs (as `n8n-nodes-unleash`). It's an extra call on every evaluation, and Unleash Edge isn't designed to take that on a hot path, so leave it off unless you need Unleash's "last seen" data for this flag. If the metric can't be sent, the node logs a warning and the workflow carries on.
 
 ### Get Enabled
 
 Returns one item per flag that is enabled for the context, in the same shape as Evaluate. It does not report usage: counting every returned flag as used would hide flags that are really stale.
 
 When no flag is enabled, the node returns no items and the workflow stops there. Turn on **Always Output Data** in the node settings if the workflow should continue.
+
+### Caching
+
+The Unleash Frontend API has no ETag or conditional-request support on a standard Unleash server, and evaluating one flag still means fetching every flag for the context — there's no narrower request available. So instead of calling Unleash on every single node execution, **Cache Duration (Seconds)** (default: 30, the same default refresh interval Unleash's own frontend SDKs use) reuses a previous result for the same context and credential rather than fetching again. Set it to **0** to always confirm freshness over the network on every execution — for example for a kill switch, like [Agent kill switch](templates/agent-kill-switch.json).
+
+"Confirm freshness over the network" and "fetch the full response again" aren't the same thing. Unleash Edge's own endpoints support conditional requests (`If-None-Match`): once the cache above is stale, the node revalidates instead of blindly refetching, and Edge answers with a cheap `304 Not Modified` when nothing changed instead of resending the full body. That only saves bandwidth, not Edge's evaluation work — the cache duration above is what actually skips that — but it means **Cache Duration: 0** against Edge still gets this benefit on every call, with no staleness tradeoff at all: every execution makes a real round trip and gets the current, confirmed answer, it just doesn't re-download it when it hasn't changed. Sending the revalidation header is harmless against a standard Unleash server too (it has nothing to compare it to, so it always answers 200), so this isn't gated behind the Server Type parameter.
+
+The cache lives in the n8n process, not in the workflow: separate workflows that evaluate the same context against the same Unleash credential share one cached result. In a queue-mode n8n install with several worker processes, each worker caches independently.
 
 ### Context fields
 

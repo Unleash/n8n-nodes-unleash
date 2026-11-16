@@ -16,7 +16,7 @@
       "parameters": {
         "flagName": "disable-checkout-agent",
         "additionalContext": {},
-        "requestOptions": {}
+        "cacheSeconds": 0
       },
       "type": "@unleash/n8n-nodes-unleash.unleash",
       "typeVersion": 1,
@@ -81,7 +81,7 @@
     },
     {
       "parameters": {
-        "content": "## Agent kill switch\n\nEvaluate a flag before an agent workflow runs. If the flag is off, stop the workflow instead of letting the agent act.\n\nSwap in your own trigger and replace **Rest of your agent workflow** with the real agent steps (AI Agent, tool calls, etc).\n\nWorks on every Unleash plan — only needs a Frontend API token.",
+        "content": "## Agent kill switch\n\nEvaluate a flag before an agent workflow runs. If the flag is off, stop the workflow instead of letting the agent act.\n\nSwap in your own trigger and replace **Rest of your agent workflow** with the real agent steps (AI Agent, tool calls, etc).\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\n**Cache Duration is set to 0** here on purpose: the node caches evaluations for 30 seconds by default, but a kill switch should see a flag flip immediately, not up to 30 seconds later.",
         "height": 200,
         "width": 320
       },

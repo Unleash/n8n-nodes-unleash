@@ -25,6 +25,12 @@ All ten import cleanly into n8n (checked by importing each file into a local ins
 
 Five templates depend on `@unleash/n8n-nodes-unleash` (tested at **v0.1.0**, the version in this repo's `package.json`): **Agent kill switch**, **Guarded automation**, **Flag-gated deploy gate**, **Route a tenant by variant** and **Gate an AI agent's tools by flag**. The other five use only n8n's own built-in nodes (Webhook, If, Switch, Remove Duplicates, Slack, Jira, Schedule Trigger, AI Agent, MCP Client). That means those five can go to the gallery before the node itself is verified — the Enterprise ones also need an Enterprise trial to actually exercise, independent of the node.
 
+## Caching and usage reporting
+
+The five templates that use the community node ([Caching](../README.md#caching) in the main README has the full reasoning): both of the node's operations cache their result for 30 seconds by default, and Evaluate's Report Usage is off by default. [`agent-kill-switch.json`](agent-kill-switch.json) sets **Cache Duration (Seconds)** to `0` explicitly — the one template here actually named a kill switch and built on the Unleash node, where a 30-second cache would mean up to 30 seconds before the workflow notices a flag flip. The other four (including [`guarded-automation.json`](guarded-automation.json), which also carries a kill-switch flag but runs on a schedule, not per-request) keep the 30-second default, since none of them needs a sub-30-second reaction and the whole point of the default is fewer calls to Unleash.
+
+Running any of these against Unleash Edge rather than a standard Unleash server gets a second, independent saving on top: the node revalidates a stale cache entry with `If-None-Match` before refetching, and Edge answers 304 when nothing changed instead of resending the full body. That applies even to `agent-kill-switch.json`'s Cache Duration: 0 — every execution still checks live, it just isn't billed the full response again when the flag hasn't moved.
+
 ## Enterprise requirement
 
 The four Enterprise templates all call the Unleash MCP server, which Unleash Enterprise hosts at `https://<instance>/api/admin/mcp` — see the [MCP integration docs](https://docs.getunleash.io/integrate/mcp). Each one's sticky note links to [Unleash's Enterprise trial](https://www.getunleash.io/plans/enterprise-payg) and carries "(Enterprise)" in its title, matching the n8n gallery convention for plan-gated templates.

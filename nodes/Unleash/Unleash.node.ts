@@ -1,5 +1,14 @@
-import { NodeConnectionTypes, type INodeType, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeApiError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+	type INodeType,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
+import { evaluateFlag, getEnabledFlags } from './GenericFunctions';
 import { flagDescription } from './resources/flag';
 
 export class Unleash implements INodeType {
@@ -24,13 +33,6 @@ export class Unleash implements INodeType {
 				required: true,
 			},
 		],
-		requestDefaults: {
-			baseURL: '={{$credentials.url.replace(/\\/+$/, "")}}',
-			headers: {
-				Accept: 'application/json',
-				'Content-Type': 'application/json',
-			},
-		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -48,4 +50,46 @@ export class Unleash implements INodeType {
 			...flagDescription,
 		],
 	};
+
+	// Programmatic rather than declarative: evaluating one flag needs a cache check that can skip
+	// the HTTP call entirely (n8n's declarative routing always sends the request after preSend
+	// runs, so it cannot short-circuit on a cache hit), and Evaluate can call one of two different
+	// endpoints depending on the Server Type parameter.
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const items = this.getInputData();
+		const returnData: INodeExecutionData[] = [];
+
+		for (let i = 0; i < items.length; i++) {
+			try {
+				const operation = this.getNodeParameter('operation', i);
+
+				if (operation === 'getEnabled') {
+					const results = await getEnabledFlags.call(this, i);
+					for (const result of results) {
+						returnData.push({ json: result, pairedItem: { item: i } });
+					}
+				} else {
+					const result = await evaluateFlag.call(this, i);
+					returnData.push({ json: result, pairedItem: { item: i } });
+				}
+			} catch (error) {
+				if (this.continueOnFail()) {
+					returnData.push({
+						json: { error: (error as Error).message },
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+				// GenericFunctions.ts already throws NodeApiError for HTTP failures; only a plain
+				// error (e.g. from getNodeParameter) still needs wrapping here.
+				const nodeError =
+					error instanceof NodeApiError || error instanceof NodeOperationError
+						? error
+						: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+				throw nodeError;
+			}
+		}
+
+		return [returnData];
+	}
 }

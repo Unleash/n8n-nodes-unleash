@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { evaluateFlag, getEnabledFlags, sendContext } from '../../GenericFunctions';
+import { DEFAULT_CACHE_SECONDS } from '../../GenericFunctions';
 
 const showForFlag = { resource: ['flag'] };
 const showForEvaluate = { resource: ['flag'], operation: ['evaluate'] };
@@ -18,22 +18,12 @@ export const flagDescription: INodeProperties[] = [
 				value: 'evaluate',
 				action: 'Evaluate a flag',
 				description: 'Check whether a flag is enabled for a context and get its variant',
-				routing: {
-					request: { method: 'POST', url: '' },
-					send: { preSend: [sendContext] },
-					output: { postReceive: [evaluateFlag] },
-				},
 			},
 			{
 				name: 'Get Enabled',
 				value: 'getEnabled',
 				action: 'Get enabled flags',
 				description: 'Get every flag that is enabled for a context, with its variant',
-				routing: {
-					request: { method: 'POST', url: '' },
-					send: { preSend: [sendContext] },
-					output: { postReceive: [getEnabledFlags] },
-				},
 			},
 		],
 		default: 'evaluate',
@@ -125,12 +115,41 @@ export const flagDescription: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Server Type',
+		name: 'serverType',
+		type: 'options',
+		options: [
+			{
+				name: 'Unleash',
+				value: 'unleash',
+				description:
+					"Fetches every flag for the context, then picks this one out of the list - the only option a standard Unleash server supports",
+			},
+			{
+				name: 'Unleash Edge',
+				value: 'edge',
+				description: 'Fetches only this flag, using Edge\'s own single-feature endpoint. Only works when the credential\'s Base URL points at Unleash Edge, not a standard Unleash server.',
+			},
+		],
+		default: 'unleash',
+		displayOptions: { show: showForEvaluate },
+		description: 'Whether the credential above points at a standard Unleash server or at Unleash Edge. Edge exposes a lighter endpoint for evaluating a single flag that a standard Unleash server doesn\'t have.',
+	},
+	{
+		displayName: 'Cache Duration (Seconds)',
+		name: 'cacheSeconds',
+		type: 'number',
+		default: DEFAULT_CACHE_SECONDS,
+		typeOptions: { minValue: 0 },
+		displayOptions: { show: showForFlag },
+		description: 'How long to reuse a previous result for the same context instead of calling Unleash again - the same way Unleash’s own frontend SDKs poll on a timer rather than on every check. Set to 0 to always fetch fresh, e.g. for a kill switch that must react immediately to a flag change.',
+	},
+	{
 		displayName: 'Report Usage',
 		name: 'reportUsage',
 		type: 'boolean',
-		default: true,
+		default: false,
 		displayOptions: { show: showForEvaluate },
-		description:
-			'Whether to send a usage metric to Unleash for this evaluation, so flags used only in n8n do not show as unused',
+		description: 'Whether to send a usage metric to Unleash for this evaluation, so flags used only in n8n do not show as unused. Off by default, since it is an extra call on every evaluation and Unleash Edge is not designed to take it on a hot path.',
 	},
 ];
