@@ -115,25 +115,25 @@ export const flagDescription: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Server Type',
-		name: 'serverType',
+		displayName: 'Lookup Method',
+		name: 'lookupMethod',
 		type: 'options',
 		options: [
 			{
-				name: 'Unleash',
-				value: 'unleash',
+				name: 'Full Flag List',
+				value: 'fullList',
 				description:
-					"Fetches every flag for the context, then picks this one out of the list - the only option a standard Unleash server supports",
+					'Fetches every flag for the context, then picks this one out of the list. Works on any Unleash server.',
 			},
 			{
-				name: 'Unleash Edge',
-				value: 'edge',
-				description: 'Fetches only this flag, using Edge\'s own single-feature endpoint. Only works when the credential\'s Base URL points at Unleash Edge, not a standard Unleash server.',
+				name: 'Single Flag (Edge Only)',
+				value: 'singleFlag',
+				description: 'Fetches only this flag, using a lighter endpoint. Only available today on Unleash Edge - requires the credential\'s Base URL to point at an Edge instance.',
 			},
 		],
-		default: 'unleash',
+		default: 'fullList',
 		displayOptions: { show: showForEvaluate },
-		description: 'Whether the credential above points at a standard Unleash server or at Unleash Edge. Edge exposes a lighter endpoint for evaluating a single flag that a standard Unleash server doesn\'t have.',
+		description: 'Whether to fetch every flag for the context (works everywhere) or just this one flag - lighter, but only available on Unleash Edge today',
 	},
 	{
 		displayName: 'Cache Duration (Seconds)',

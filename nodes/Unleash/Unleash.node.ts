@@ -54,7 +54,7 @@ export class Unleash implements INodeType {
 	// Programmatic rather than declarative: evaluating one flag needs a cache check that can skip
 	// the HTTP call entirely (n8n's declarative routing always sends the request after preSend
 	// runs, so it cannot short-circuit on a cache hit), and Evaluate can call one of two different
-	// endpoints depending on the Server Type parameter.
+	// endpoints depending on the Lookup Method parameter.
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];

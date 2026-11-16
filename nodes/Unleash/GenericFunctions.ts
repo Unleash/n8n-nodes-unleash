@@ -461,12 +461,12 @@ export async function evaluateFlag(
 	itemIndex: number,
 ): Promise<FlagResult> {
 	const flagName = String(this.getNodeParameter('flagName', itemIndex, '')).trim();
-	const serverType = this.getNodeParameter('serverType', itemIndex, 'unleash');
+	const lookupMethod = this.getNodeParameter('lookupMethod', itemIndex, 'fullList');
 	const credentials = await this.getCredentials<UnleashCredentials>(CREDENTIAL_TYPE, itemIndex);
 	const context = buildContext.call(this, itemIndex);
 
 	let result: FlagResult;
-	if (serverType === 'edge') {
+	if (lookupMethod === 'singleFlag') {
 		const found = await fetchSingleFeature.call(this, itemIndex, credentials, context, flagName);
 		result = found ?? defaultFlagResult(flagName);
 	} else {

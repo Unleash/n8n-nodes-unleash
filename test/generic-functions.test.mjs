@@ -330,7 +330,7 @@ describe('evaluateFlag - standard Unleash server', () => {
 describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 	it('calls the single-feature endpoint via GET and maps its response', async () => {
 		const { fns, requests } = fakeFunctions({
-			params: { flagName: 'new-checkout', serverType: 'edge', cacheSeconds: 0, userId: 'u1' },
+			params: { flagName: 'new-checkout', lookupMethod: 'singleFlag', cacheSeconds: 0, userId: 'u1' },
 			responses: [
 				{
 					body: { name: 'new-checkout', enabled: true, variant: { name: 'blue', enabled: true } },
@@ -358,7 +358,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 		const { fns, requests } = fakeFunctions({
 			params: {
 				flagName: 'new-checkout',
-				serverType: 'edge',
+				lookupMethod: 'singleFlag',
 				cacheSeconds: 0,
 				additionalContext: {
 					properties: { property: [{ name: 'plan', value: 'enterprise' }] },
@@ -373,7 +373,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 
 	it('treats a 404 as a disabled flag rather than an error', async () => {
 		const { fns } = fakeFunctions({
-			params: { flagName: 'unknown-flag', serverType: 'edge', cacheSeconds: 0 },
+			params: { flagName: 'unknown-flag', lookupMethod: 'singleFlag', cacheSeconds: 0 },
 			responses: [{ body: { error: 'not found' }, headers: {}, statusCode: 404 }],
 		});
 		const result = await evaluateFlag.call(fns, 0);
@@ -386,7 +386,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 
 	it('throws a node error for any other failing status code, with nothing cached', async () => {
 		const { fns } = fakeFunctions({
-			params: { flagName: 'secret-flag', serverType: 'edge', cacheSeconds: 0 },
+			params: { flagName: 'secret-flag', lookupMethod: 'singleFlag', cacheSeconds: 0 },
 			responses: [{ body: { error: 'forbidden' }, headers: {}, statusCode: 403 }],
 		});
 		await assert.rejects(() => evaluateFlag.call(fns, 0));
@@ -394,7 +394,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 
 	it('falls back to a cached confirmed-not-found result on a later API error', async () => {
 		const { fns, warnings } = fakeFunctions({
-			params: { flagName: 'unknown-flag', serverType: 'edge', cacheSeconds: 0, userId: 'u-404' },
+			params: { flagName: 'unknown-flag', lookupMethod: 'singleFlag', cacheSeconds: 0, userId: 'u-404' },
 			responses: [
 				{ body: { error: 'not found' }, headers: {}, statusCode: 404 },
 				{ throws: 'socket hang up' },
@@ -410,7 +410,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 		const { fns, requests } = fakeFunctions({
 			params: {
 				flagName: 'new-checkout',
-				serverType: 'edge',
+				lookupMethod: 'singleFlag',
 				cacheSeconds: 30,
 				userId: 'separate-cache-test',
 			},
@@ -425,7 +425,7 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 		const { fns, requests } = fakeFunctions({
 			params: {
 				flagName: 'new-checkout',
-				serverType: 'edge',
+				lookupMethod: 'singleFlag',
 				cacheSeconds: 0,
 				userId: 'etag-edge-test',
 			},
