@@ -81,6 +81,24 @@ export function buildContext(this: IExecuteFunctions, itemIndex: number): IConte
 	return context;
 }
 
+/**
+ * Every context field as a query param, matching unleash-proxy-client's own
+ * urlWithContextAsQuery: properties are flattened as properties[key]=value rather than
+ * JSON-encoded. Unleash's own frontend-api-controller reads a GET request's context from
+ * exactly this shape (`req.query`, parsed by Express's qs-based parser), and Edge's
+ * single-feature endpoint follows the same convention.
+ */
+function contextToQueryParams(context: IContext): IDataObject {
+	const qs: IDataObject = { appName: context.appName };
+	if (context.userId) qs.userId = context.userId;
+	if (context.sessionId) qs.sessionId = context.sessionId;
+	if (context.remoteAddress) qs.remoteAddress = context.remoteAddress;
+	for (const [key, value] of Object.entries(context.properties ?? {})) {
+		qs[`properties[${key}]`] = value;
+	}
+	return qs;
+}
+
 function parseToggles(body: unknown): IToggle[] {
 	const parsed = typeof body === 'string' ? (JSON.parse(body) as unknown) : body;
 	const toggles = (parsed as { toggles?: unknown } | undefined)?.toggles;
@@ -99,12 +117,17 @@ function toVariant(variant: IVariant | undefined): IVariant {
 }
 
 /**
- * Picks one flag out of a Frontend API toggle list. The Frontend API leaves out
- * disabled flags, so a missing flag is a normal result: enabled false, disabled variant.
+ * The result for a flag that wasn't found. Kept as one function so the n8n-facing boundary
+ * (evaluateFlag) is the single place that decides what "not found" means - not something
+ * buried separately in each fetch path - which is also where a future configurable default
+ * would hook in.
  */
-export function toFlagResult(flagName: string, toggles: IToggle[]): FlagResult {
-	const toggle = toggles.find((candidate) => candidate.name === flagName);
-	if (!toggle) return { name: flagName, enabled: false, variant: { ...DISABLED_VARIANT } };
+function defaultFlagResult(flagName: string): FlagResult {
+	return { name: flagName, enabled: false, variant: { ...DISABLED_VARIANT } };
+}
+
+/** Builds the result for one toggle from the Frontend API's full-list response. */
+function toFlagResult(toggle: IToggle): FlagResult {
 	return {
 		name: toggle.name,
 		enabled: toggle.enabled === true,
@@ -112,22 +135,20 @@ export function toFlagResult(flagName: string, toggles: IToggle[]): FlagResult {
 	};
 }
 
-/** The shape Unleash Edge's single-feature endpoint returns - enough to build a FlagResult. */
+/**
+ * The shape Unleash Edge's single-feature endpoint returns on a 200. Confirmed straight from
+ * Edge's own source (frontend.rs): name, enabled and variant are always constructed together,
+ * never conditionally - a flag it doesn't know about is a 404 (EdgeError::FeatureNotFound), not
+ * a 200 with any of these fields missing.
+ */
 interface SingleFeatureResponse {
-	name?: string;
-	enabled?: boolean;
-	variant?: IVariant;
+	name: string;
+	enabled: boolean;
+	variant: IVariant;
 }
 
-function toFlagResultFromSingleFeature(
-	flagName: string,
-	body: SingleFeatureResponse,
-): FlagResult {
-	return {
-		name: body.name ?? flagName,
-		enabled: body.enabled === true,
-		variant: toVariant(body.variant),
-	};
+function toFlagResultFromSingleFeature(body: SingleFeatureResponse): FlagResult {
+	return { name: body.name, enabled: body.enabled === true, variant: toVariant(body.variant) };
 }
 
 /** Body for `POST /api/frontend/client/metrics`: one bucket with this single evaluation. */
@@ -175,34 +196,31 @@ export async function reportUsage(
 }
 
 // ---------------------------------------------------------------------------
-// Best-effort response cache, with ETag revalidation on Unleash Edge
+// Best-effort response cache, with ETag revalidation
 //
-// The Frontend API has no ETag or conditional-request support on a standard
-// Unleash server (confirmed from Unleash's own server source: the Frontend
-// API controller sets only `Cache-control: no-cache`, nothing conditional).
-// Evaluating one flag there still means fetching every flag for the context,
-// with no narrower request available - so a time-based cache is the only
-// lever on a standard server, and this node polls on a timer the same way
-// Unleash's own frontend SDKs do: unleash-proxy-client defaults to the same
-// refresh interval as DEFAULT_CACHE_SECONDS above.
+// A standard Unleash server supports ETag/conditional-GET like any other
+// Express app (confirmed from Express's own source: res.send() always sets an
+// ETag, and Unleash never disables it), but only on a GET request - Express's
+// req.fresh getter, which drives the automatic 304 shortcut, is hard-gated to
+// GET/HEAD/QUERY and always returns false for POST. Both fetch functions
+// below use GET for exactly this reason. `Cache-control: no-cache` on
+// Unleash's own response means "always revalidate", not "no caching exists" -
+// it pairs naturally with ETag revalidation, it doesn't rule it out.
 //
-// Unleash Edge is different: a generic etag middleware wraps its entire
-// `/api` router (confirmed from Edge's own source), so every endpoint it
-// exposes - the full list and the single-feature endpoint alike - accepts
-// `If-None-Match` and can answer 304. That middleware runs *after* the route
-// handler, though, so it saves bandwidth, not Edge's evaluation work; the
-// time-based cache above is what actually avoids that. Sending
-// `If-None-Match` is harmless against a standard server too (it has nothing
-// to compare it to, so it just always returns 200), so this node always
-// attempts it once the time-based cache goes stale, rather than gating it
-// behind the Server Type parameter.
+// Evaluating one flag still means fetching every flag for the context on a
+// standard server - there's no narrower request available there (Edge adds
+// one; see fetchSingleFeature below) - so a time-based cache is still the
+// main lever for that specific cost, same as Unleash's own frontend SDKs
+// polling on a timer: unleash-proxy-client defaults to the same refresh
+// interval as DEFAULT_CACHE_SECONDS above.
 //
 // The cache lives in this module's memory rather than n8n's workflow static
 // data. That avoids adding a database write to n8n on every cache miss, and
 // it lets separate workflows that evaluate the same context against the same
 // Unleash instance share one cache entry instead of one each. The one
-// tradeoff: a queue-mode n8n install with several worker processes does not
-// share this cache between workers - each worker caches on its own.
+// tradeoff: each worker in a queue-mode n8n install is its own separate
+// Node.js process (confirmed from n8n's own docs), so this cache is not
+// shared between workers - each one caches on its own.
 // ---------------------------------------------------------------------------
 
 interface CacheEntry<T> {
@@ -212,14 +230,15 @@ interface CacheEntry<T> {
 }
 
 const toggleCache = new Map<string, CacheEntry<IToggle[]>>();
-const featureCache = new Map<string, CacheEntry<FlagResult>>();
+const featureCache = new Map<string, CacheEntry<FlagResult | null>>();
 
 function isFresh(entry: CacheEntry<unknown>, ttlMs: number): boolean {
 	return Date.now() - entry.fetchedAt <= ttlMs;
 }
 
 /** Stores a value (and its ETag, if any) regardless of the cache duration setting, so a later
- * call can still revalidate cheaply even when the time-based cache itself is disabled. */
+ * call can still revalidate cheaply, or fall back to it on an API error, even when the
+ * time-based cache itself is set to 0. */
 function cacheStore<T>(
 	cache: Map<string, CacheEntry<T>>,
 	key: string,
@@ -247,39 +266,48 @@ function getEtag(response: IN8nHttpFullResponse): string | undefined {
 	return typeof value === 'string' ? value : undefined;
 }
 
-/** Identifies a credential without keeping the token itself around as a cache key. */
-function credentialFingerprint(credentials: UnleashCredentials): string {
-	return createHash('sha256')
-		.update(`${credentials.url}:${credentials.token}`)
-		.digest('hex')
-		.slice(0, 16);
-}
-
-function contextCacheKey(context: IContext): string {
-	const properties = context.properties ?? {};
-	const propertiesPart = Object.keys(properties)
-		.sort()
-		.map((key) => `${key}=${properties[key]}`)
-		.join('&');
-	return [
-		context.appName,
-		context.userId ?? '',
-		context.sessionId ?? '',
-		context.remoteAddress ?? '',
-		propertiesPart,
-	].join('|');
+/**
+ * On an API failure (network error, or an HTTP status that isn't 2xx/304/404), falls back to a
+ * cached value - however stale, including one cached from an earlier error - and logs a
+ * warning, rather than failing the whole workflow over what's often a transient problem. This
+ * is the same degrade-gracefully pattern official Unleash SDKs use. Throws only when there's
+ * nothing cached to fall back to.
+ *
+ * n8n's HTTP client follows redirects by default (it has to be opted out of via
+ * disableFollowRedirect, which this node never sets), so a 3xx reaching this function at all
+ * means redirects were exhausted or otherwise failed - that's treated as the same kind of
+ * failure as any other, covered by the same fallback.
+ */
+function failOpen<T>(
+	execFns: IExecuteFunctions,
+	itemIndex: number,
+	cached: CacheEntry<T> | undefined,
+	description: string,
+	cause: Error,
+	errorBody?: JsonObject,
+): T {
+	if (cached) {
+		execFns.logger.warn(
+			`Unleash: could not ${description} (${cause.message}) - using the last cached result instead.`,
+		);
+		return cached.value;
+	}
+	throw new NodeApiError(
+		execFns.getNode(),
+		errorBody ?? ({ message: cause.message } as JsonObject),
+		{ itemIndex },
+	);
 }
 
 function getCacheSeconds(this: IExecuteFunctions, itemIndex: number): number {
 	const seconds = this.getNodeParameter('cacheSeconds', itemIndex, DEFAULT_CACHE_SECONDS);
-	return typeof seconds === 'number' ? seconds : Number(seconds);
+	return Number(seconds);
 }
 
 /**
- * Fetches every flag for a context from `POST {base}`. Returns the cached list without any
- * network call while it is still fresh; once stale, revalidates with `If-None-Match` so Unleash
- * Edge can answer 304 instead of resending the full list (a standard Unleash server ignores the
- * header and just answers 200, so this is always safe to attempt).
+ * Fetches every flag for a context from `GET {base}`, reusing a cached response within the
+ * cache window. Once stale, revalidates with `If-None-Match` so a 304 can replace resending the
+ * full body. On an API error, falls back to whatever's cached rather than failing outright.
  */
 async function fetchAllToggles(
 	this: IExecuteFunctions,
@@ -301,16 +329,16 @@ async function fetchAllToggles(
 	let response: IN8nHttpFullResponse;
 	try {
 		response = (await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_TYPE, {
-			method: 'POST',
+			method: 'GET',
 			url: baseUrl(credentials),
 			headers,
-			body: { context },
+			qs: contextToQueryParams(context),
 			json: true,
 			returnFullResponse: true,
 			ignoreHttpStatusErrors: true,
 		})) as IN8nHttpFullResponse;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+		return failOpen(this, itemIndex, cached, 'fetch flags from Unleash', error as Error);
 	}
 
 	if (response.statusCode === 304 && cached) {
@@ -318,10 +346,14 @@ async function fetchAllToggles(
 		return cached.value;
 	}
 	if (response.statusCode < 200 || response.statusCode >= 300) {
-		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+		return failOpen(
+			this,
 			itemIndex,
-			httpCode: String(response.statusCode),
-		});
+			cached,
+			'fetch flags from Unleash',
+			new Error(`unexpected HTTP ${response.statusCode}`),
+			response.body as JsonObject,
+		);
 	}
 
 	const toggles = parseToggles(response.body);
@@ -330,10 +362,11 @@ async function fetchAllToggles(
 }
 
 /**
- * Fetches one flag from Unleash Edge's single-feature endpoint
- * (`GET /api/frontend/features/:flagName`). Only Edge exposes this endpoint - a standard Unleash
- * server does not. Returns the cached result without any network call while it is still fresh;
- * once stale, revalidates with `If-None-Match` so Edge can answer 304 instead of resending the body.
+ * Fetches one flag from Unleash Edge's single-feature endpoint (`GET /api/frontend/features/:flagName`),
+ * returning null when Edge confirms the flag doesn't exist - leaving what "not found" defaults to up to
+ * the caller. Only Edge exposes this endpoint - a standard Unleash server does not. Reuses a cached
+ * response within the cache window; once stale, revalidates with `If-None-Match`. On an API error,
+ * falls back to whatever's cached (a confirmed-not-found result included) rather than failing outright.
  */
 async function fetchSingleFeature(
 	this: IExecuteFunctions,
@@ -341,23 +374,13 @@ async function fetchSingleFeature(
 	credentials: UnleashCredentials,
 	context: IContext,
 	flagName: string,
-): Promise<FlagResult> {
+): Promise<FlagResult | null> {
 	const cacheSeconds = getCacheSeconds.call(this, itemIndex);
 	const cacheKey = `${credentialFingerprint(credentials)}:${flagName}:${contextCacheKey(context)}`;
 	const cached = featureCache.get(cacheKey);
 
 	if (cacheSeconds > 0 && cached && isFresh(cached, cacheSeconds * 1000)) {
 		return cached.value;
-	}
-
-	// Matches unleash-proxy-client's own urlWithContextAsQuery: every context field becomes a
-	// query param, and properties are flattened as properties[key]=value rather than JSON-encoded.
-	const qs: IDataObject = { appName: context.appName };
-	if (context.userId) qs.userId = context.userId;
-	if (context.sessionId) qs.sessionId = context.sessionId;
-	if (context.remoteAddress) qs.remoteAddress = context.remoteAddress;
-	for (const [key, value] of Object.entries(context.properties ?? {})) {
-		qs[`properties[${key}]`] = value;
 	}
 
 	const headers: IDataObject = { Accept: 'application/json' };
@@ -369,13 +392,19 @@ async function fetchSingleFeature(
 			method: 'GET',
 			url: `${baseUrl(credentials)}/features/${encodeURIComponent(flagName)}`,
 			headers,
-			qs,
+			qs: contextToQueryParams(context),
 			json: true,
 			returnFullResponse: true,
 			ignoreHttpStatusErrors: true,
 		})) as IN8nHttpFullResponse;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex });
+		return failOpen(
+			this,
+			itemIndex,
+			cached,
+			`fetch flag "${flagName}" from Edge`,
+			error as Error,
+		);
 	}
 
 	if (response.statusCode === 304 && cached) {
@@ -383,21 +412,47 @@ async function fetchSingleFeature(
 		return cached.value;
 	}
 
-	let result: FlagResult;
+	let result: FlagResult | null;
 	if (response.statusCode === 404) {
-		// Same convention as the full-list endpoint: a flag Edge doesn't know about is not an error.
-		result = { name: flagName, enabled: false, variant: { ...DISABLED_VARIANT } };
+		result = null;
 	} else if (response.statusCode >= 200 && response.statusCode < 300) {
-		result = toFlagResultFromSingleFeature(flagName, response.body as SingleFeatureResponse);
+		result = toFlagResultFromSingleFeature(response.body as SingleFeatureResponse);
 	} else {
-		throw new NodeApiError(this.getNode(), response.body as JsonObject, {
+		return failOpen(
+			this,
 			itemIndex,
-			httpCode: String(response.statusCode),
-		});
+			cached,
+			`fetch flag "${flagName}" from Edge`,
+			new Error(`unexpected HTTP ${response.statusCode}`),
+			response.body as JsonObject,
+		);
 	}
 
 	cacheStore(featureCache, cacheKey, result, getEtag(response));
 	return result;
+}
+
+/** Identifies a credential without keeping the token itself around as a cache key. */
+function credentialFingerprint(credentials: UnleashCredentials): string {
+	return createHash('sha256')
+		.update(`${credentials.url}:${credentials.token}`)
+		.digest('hex')
+		.slice(0, 16);
+}
+
+function contextCacheKey(context: IContext): string {
+	const properties = context.properties ?? {};
+	const propertyEntries = Object.keys(properties)
+		.sort()
+		.map((key): [string, string] => [key, properties[key]]);
+
+	return JSON.stringify([
+		context.appName,
+		context.userId ?? null,
+		context.sessionId ?? null,
+		context.remoteAddress ?? null,
+		propertyEntries,
+	]);
 }
 
 /** Runs the Evaluate operation for one item. */
@@ -410,10 +465,15 @@ export async function evaluateFlag(
 	const credentials = await this.getCredentials<UnleashCredentials>(CREDENTIAL_TYPE, itemIndex);
 	const context = buildContext.call(this, itemIndex);
 
-	const result =
-		serverType === 'edge'
-			? await fetchSingleFeature.call(this, itemIndex, credentials, context, flagName)
-			: toFlagResult(flagName, await fetchAllToggles.call(this, itemIndex, credentials, context));
+	let result: FlagResult;
+	if (serverType === 'edge') {
+		const found = await fetchSingleFeature.call(this, itemIndex, credentials, context, flagName);
+		result = found ?? defaultFlagResult(flagName);
+	} else {
+		const toggles = await fetchAllToggles.call(this, itemIndex, credentials, context);
+		const toggle = toggles.find((candidate) => candidate.name === flagName);
+		result = toggle ? toFlagResult(toggle) : defaultFlagResult(flagName);
+	}
 
 	if (this.getNodeParameter('reportUsage', itemIndex, false) === true) {
 		await reportUsage.call(this, result, context.appName, credentials);
@@ -430,5 +490,5 @@ export async function getEnabledFlags(
 	const credentials = await this.getCredentials<UnleashCredentials>(CREDENTIAL_TYPE, itemIndex);
 	const context = buildContext.call(this, itemIndex);
 	const toggles = await fetchAllToggles.call(this, itemIndex, credentials, context);
-	return toggles.map((toggle) => toFlagResult(toggle.name, [toggle]));
+	return toggles.map(toFlagResult);
 }

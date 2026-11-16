@@ -142,7 +142,7 @@ export const flagDescription: INodeProperties[] = [
 		default: DEFAULT_CACHE_SECONDS,
 		typeOptions: { minValue: 0 },
 		displayOptions: { show: showForFlag },
-		description: 'How long to reuse a previous result for the same context instead of calling Unleash again - the same way Unleash’s own frontend SDKs poll on a timer rather than on every check. Set to 0 to always fetch fresh, e.g. for a kill switch that must react immediately to a flag change.',
+		description: 'How long to reuse a previous result for the same context instead of calling Unleash again - the same way Unleash’s own frontend SDKs poll on a timer rather than on every check. For something like a kill switch, use a short duration (1-3 seconds) rather than 0: every other flag in Unleash follows the same consistency model, and a few seconds is negligible next to how long it takes a person to act on the change.',
 	},
 	{
 		displayName: 'Report Usage',

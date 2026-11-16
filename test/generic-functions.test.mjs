@@ -34,9 +34,10 @@ function fakeFunctions({
 					throw new Error(failMetrics);
 				}
 				if (responses) {
-					const response = responses[callIndex] ?? responses[responses.length - 1];
+					const entry = responses[callIndex] ?? responses[responses.length - 1];
 					callIndex += 1;
-					return response;
+					if (entry && entry.throws) throw new Error(entry.throws);
+					return entry;
 				}
 				return { body: {}, headers: {}, statusCode: 200 };
 			},
@@ -111,6 +112,25 @@ describe('evaluateFlag - standard Unleash server', () => {
 				payload: { type: 'json', value: '{"color":"blue"}' },
 			},
 		});
+	});
+
+	it('fetches via GET with the context as query params, not a POST body', async () => {
+		const { fns, requests } = fakeFunctions({
+			params: {
+				flagName: 'new-checkout',
+				cacheSeconds: 0,
+				userId: 'u1',
+				additionalContext: { properties: { property: [{ name: 'plan', value: 'enterprise' }] } },
+			},
+			responses: [fullListResponse([enabledToggle])],
+		});
+		await evaluateFlag.call(fns, 0);
+		const [{ options }] = requests;
+		assert.equal(options.method, 'GET');
+		assert.equal(options.body, undefined);
+		assert.equal(options.qs.userId, 'u1');
+		assert.equal(options.qs.appName, 'n8n');
+		assert.equal(options.qs['properties[plan]'], 'enterprise');
 	});
 
 	it('returns enabled false with the disabled variant when the flag is absent', async () => {
@@ -270,10 +290,45 @@ describe('evaluateFlag - standard Unleash server', () => {
 		assert.equal(requests[0].options.headers['If-None-Match'], undefined, 'nothing cached yet');
 		assert.equal(requests[1].options.headers['If-None-Match'], '"v1"');
 	});
+
+	it('falls back to a stale cached result and logs a warning on an API error', async () => {
+		const { fns, requests, warnings } = fakeFunctions({
+			params: { flagName: 'new-checkout', cacheSeconds: 0, userId: 'fail-open-user' },
+			responses: [fullListResponse([enabledToggle]), { throws: 'socket hang up' }],
+		});
+		const first = await evaluateFlag.call(fns, 0);
+		const second = await evaluateFlag.call(fns, 0);
+		assert.deepEqual(second, first, 'falls back to the last cached result rather than failing');
+		assert.equal(requests.length, 2);
+		assert.equal(warnings.length, 1);
+		assert.match(warnings[0], /socket hang up.*cached/);
+	});
+
+	it('throws when an API error occurs and nothing is cached yet', async () => {
+		const { fns } = fakeFunctions({
+			params: { flagName: 'new-checkout', cacheSeconds: 0, userId: 'cold-fail-user' },
+			responses: [{ throws: 'socket hang up' }],
+		});
+		await assert.rejects(() => evaluateFlag.call(fns, 0));
+	});
+
+	it('falls back to cache on an unexpected non-2xx/304 status too', async () => {
+		const { fns, warnings } = fakeFunctions({
+			params: { flagName: 'new-checkout', cacheSeconds: 0, userId: 'fail-open-status-user' },
+			responses: [
+				fullListResponse([enabledToggle]),
+				{ body: { error: 'bad gateway' }, headers: {}, statusCode: 502 },
+			],
+		});
+		const first = await evaluateFlag.call(fns, 0);
+		const second = await evaluateFlag.call(fns, 0);
+		assert.deepEqual(second, first);
+		assert.equal(warnings.length, 1);
+	});
 });
 
 describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
-	it('calls the single-feature endpoint and maps its response', async () => {
+	it('calls the single-feature endpoint via GET and maps its response', async () => {
 		const { fns, requests } = fakeFunctions({
 			params: { flagName: 'new-checkout', serverType: 'edge', cacheSeconds: 0, userId: 'u1' },
 			responses: [
@@ -329,12 +384,26 @@ describe('evaluateFlag - Unleash Edge single-feature endpoint', () => {
 		});
 	});
 
-	it('throws a node error for any other failing status code', async () => {
+	it('throws a node error for any other failing status code, with nothing cached', async () => {
 		const { fns } = fakeFunctions({
 			params: { flagName: 'secret-flag', serverType: 'edge', cacheSeconds: 0 },
 			responses: [{ body: { error: 'forbidden' }, headers: {}, statusCode: 403 }],
 		});
 		await assert.rejects(() => evaluateFlag.call(fns, 0));
+	});
+
+	it('falls back to a cached confirmed-not-found result on a later API error', async () => {
+		const { fns, warnings } = fakeFunctions({
+			params: { flagName: 'unknown-flag', serverType: 'edge', cacheSeconds: 0, userId: 'u-404' },
+			responses: [
+				{ body: { error: 'not found' }, headers: {}, statusCode: 404 },
+				{ throws: 'socket hang up' },
+			],
+		});
+		const first = await evaluateFlag.call(fns, 0);
+		const second = await evaluateFlag.call(fns, 0);
+		assert.deepEqual(second, first);
+		assert.equal(warnings.length, 1);
 	});
 
 	it('caches single-feature responses separately per flag name', async () => {

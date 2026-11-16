@@ -63,14 +63,23 @@ export class Unleash implements INodeType {
 			try {
 				const operation = this.getNodeParameter('operation', i);
 
-				if (operation === 'getEnabled') {
-					const results = await getEnabledFlags.call(this, i);
-					for (const result of results) {
+				switch (operation) {
+					case 'evaluate': {
+						const result = await evaluateFlag.call(this, i);
 						returnData.push({ json: result, pairedItem: { item: i } });
+						break;
 					}
-				} else {
-					const result = await evaluateFlag.call(this, i);
-					returnData.push({ json: result, pairedItem: { item: i } });
+					case 'getEnabled': {
+						const results = await getEnabledFlags.call(this, i);
+						for (const result of results) {
+							returnData.push({ json: result, pairedItem: { item: i } });
+						}
+						break;
+					}
+					default:
+						throw new NodeOperationError(this.getNode(), `Unknown operation "${operation}"`, {
+							itemIndex: i,
+						});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
