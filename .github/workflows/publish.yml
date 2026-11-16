@@ -15,27 +15,24 @@
 #
 # To upgrade, add @n8n/node-cli@latest as a dev dependency using your package manager.
 #
-# ─── ONE-TIME SETUP ────────────────────────────────────────────────────────────
+# ─── ONE-TIME SETUP: npm Trusted Publishing ───────────────────────────────────
 #
-# Option A — OIDC Trusted Publishing (recommended, no long-lived secrets):
-#   1. Log in to npmjs.com and open your package's settings.
-#   2. Under "Publish access" → "Trusted Publishers", click "Add a publisher".
-#   3. Select GitHub Actions and fill in:
-#        Repository owner: <your-github-username-or-org>
-#        Repository name:  <your-repo-name>
-#        Workflow name:    publish.yml
-#        Environment:      (leave blank unless you use GitHub Environments)
-#   4. Leave the NPM_TOKEN secret unset in this repository. GitHub's OIDC
-#      token is used instead — no secret ever touches your repo settings.
+# This workflow authenticates to npm via OIDC Trusted Publishing - no long-lived
+# NPM_TOKEN secret, ever.
 #
-# Option B — npm Automation Token (fallback):
-#   1. On npmjs.com: Access Tokens → Generate New Token → Granular Access Token.
-#      Scope it to this package with "Read and write" publish permission.
-#   2. In GitHub: Settings → Secrets and variables → Actions → New secret.
-#      Name it NPM_TOKEN and paste the token value.
-#
-# Both options work with --provenance. Provenance is signed by GitHub's OIDC
-# infrastructure regardless of how npm authentication is handled.
+#   1. Trusted Publishing can't be configured for a package that has never been
+#      published. Publish the very first version some other way first (e.g.
+#      `npm login` and `npm publish` by hand, from a built `dist/`).
+#   2. Log in to npmjs.com and open the package's settings.
+#   3. Under "Publish access" → "Trusted Publishers", click "Add a publisher".
+#   4. Select GitHub Actions and fill in:
+#        Organization or user: <your-github-org-or-username>
+#        Repository:           <your-repo-name>
+#        Workflow filename:    publish.yml   (filename only, not the full path)
+#        Environment:          (leave blank unless you use GitHub Environments)
+#   5. A newly added Trusted Publisher expires if it doesn't see a successful
+#      publish within 2 days - don't set this up before you're ready to tag
+#      the next release.
 #
 # ─── TAG CONVENTION ────────────────────────────────────────────────────────────
 #
@@ -84,16 +81,13 @@ jobs:
       - name: Install dependencies
         run: 'npm ci'
 
+      - name: Ensure npm supports Trusted Publishing
+        # OIDC trusted publishing needs npm 11.5.1+; the version bundled with
+        # node-version: 'lts/*' above isn't guaranteed to already clear that bar.
+        run: 'npm install -g npm@latest'
+
       - name: Release
-        # Publishes to npm with a provenance attestation (requires id-token: write above).
-        # Lint and build run automatically as part of the release process.
-        #
-        # Option A (OIDC): leave NPM_TOKEN unset — the token step is skipped and
-        #   npm uses the OIDC exchange instead.
-        # Option B (token): set NPM_TOKEN in repo secrets — it is written to
-        #   .npmrc here before publishing.
-        run: |
-          [ -n "$NPM_TOKEN" ] && npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm run release
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Publishes to npm with a provenance attestation (requires id-token: write
+        # above) via OIDC Trusted Publishing - see "ONE-TIME SETUP" at the top of
+        # this file. Lint and build run automatically as part of the release process.
+        run: 'npm run release'
