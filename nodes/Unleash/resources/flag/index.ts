@@ -150,6 +150,6 @@ export const flagDescription: INodeProperties[] = [
 		type: 'boolean',
 		default: false,
 		displayOptions: { show: showForEvaluate },
-		description: 'Whether to send a usage metric to Unleash for this evaluation, so flags used only in n8n do not show as unused. Off by default, since it is an extra call on every evaluation and Unleash Edge is not designed to take it on a hot path.',
+		description: 'Whether to send a usage metric to Unleash for this evaluation, so flags used only in n8n do not show as unused. Off by default, since it is an extra call on every evaluation.',
 	},
 ];
