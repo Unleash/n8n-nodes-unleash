@@ -181,7 +181,16 @@ npm run lint
 npm test        # builds, then runs the unit tests in test/
 ```
 
-Releases are published to npm from GitHub Actions with provenance. See `.github/workflows/publish.yml`.
+### Releasing
+
+`npm run release` (`n8n-node release`) is the same command for every release, but it behaves completely differently depending on where it runs — detected automatically via the `GITHUB_ACTIONS` environment variable. This isn't obvious from running it once, so here's what each path actually does:
+
+- **Run it locally** — this is what you do, every single time: it bumps the version, regenerates the changelog, commits, tags, pushes, and creates the GitHub release itself. It does **not** publish to npm (`--npm.publish=false` is the tool's own default). The tag push is what triggers `.github/workflows/publish.yml`.
+- **Run inside that workflow** — the exact same command takes a different path entirely: lint, build, then `npm publish` with provenance enabled. No version bump, no git operations, no GitHub release; all of that already happened in the step above.
+
+So there's no separate release script and no manual "create a GitHub release" step: releasing is always just `npm run release`, run locally, once per version. Don't pass `--publish` — that publishes straight from your machine instead, which skips provenance and can't produce a verified community node (the tool prints its own warning if you do).
+
+The one genuinely manual, one-time exception is the very first release ever: npm's OIDC Trusted Publishing can't be configured for a package that has never been published, so that first version has to go out some other way (e.g. `npm login` and `npm publish` by hand) before `publish.yml` can take over for every release after it. See the comments at the top of `publish.yml` for the exact Trusted Publishing setup steps.
 
 ### Versioning
 
@@ -193,7 +202,7 @@ The package and the node have separate version numbers, and they don't need to m
 When you release:
 
 - For a fix, or for something new that existing workflows don't use (an operation, an optional field), bump only the package version.
-- For a change that would make existing workflows behave differently (renaming or removing a parameter, changing the output, changing a default), add a node version with [light versioning](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning): set `version: [1, 1.1]`, show the new behavior only from 1.1 with `@version` in `displayOptions`, set `nodeVersion` in `Unleash.node.json` to the new version, and bump the package's minor version. Declarative nodes like this one can't use full versioning.
+- For a change that would make existing workflows behave differently (renaming or removing a parameter, changing the output, changing a default), add a node version with [light versioning](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning): set `version: [1, 1.1]`, show the new behavior only from 1.1 with `@version` in `displayOptions`, set `nodeVersion` in `Unleash.node.json` to the new version, and bump the package's minor version. Full versioning (a separate class per version) is also available now that the node is programmatic-style, but hasn't been needed yet — light versioning covers every case so far.
 - n8n saves only the parameters that differ from their default, so a new default reaches every workflow that never changed the field. Treat it as a breaking change.
 - Name the node version in `CHANGELOG.md` whenever it changes.
 
