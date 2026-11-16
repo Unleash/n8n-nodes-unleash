@@ -183,14 +183,13 @@ npm test        # builds, then runs the unit tests in test/
 
 ### Releasing
 
-`npm run release` (`n8n-node release`) is the same command for every release, but it behaves completely differently depending on where it runs — detected automatically via the `GITHUB_ACTIONS` environment variable. This isn't obvious from running it once, so here's what each path actually does:
+Releasing is a manual GitHub Actions run, no local checkout required: open the **Actions** tab, run **🚀 Release**, and type in the new version (and, if it's a pre-release, the npm tag). That one run lints, builds, and tests the package; bumps the version; updates the tag; pushes; publishes to npm with provenance; and creates the GitHub release — matching how other Unleash npm packages release (see [`Unleash/toolbar`](https://github.com/Unleash/toolbar/blob/main/.github/workflows/release.yml)), via a shared workflow in `Unleash/.github`. See `.github/workflows/release.yml` for exactly what each step does and why, including why it needs its own validation job even though a generic org-wide template handles the actual release mechanics.
 
-- **Run it locally** — this is what you do, every single time: it bumps the version, regenerates the changelog, commits, tags, pushes, and creates the GitHub release itself. It does **not** publish to npm (`--npm.publish=false` is the tool's own default). The tag push is what triggers `.github/workflows/publish.yml`.
-- **Run inside that workflow** — the exact same command takes a different path entirely: lint, build, then `npm publish` with provenance enabled. No version bump, no git operations, no GitHub release; all of that already happened in the step above.
+Update `CHANGELOG.md` by hand, in its own PR, before running a release — the workflow doesn't touch it; GitHub's release notes are generated from commit history instead.
 
-So there's no separate release script and no manual "create a GitHub release" step: releasing is always just `npm run release`, run locally, once per version. Don't pass `--publish` — that publishes straight from your machine instead, which skips provenance and can't produce a verified community node (the tool prints its own warning if you do).
+The one genuinely manual, one-time exception is the very first release ever: npm's OIDC Trusted Publishing can't be configured for a package that has never been published, so that first version has to go out some other way (e.g. `npm login` and `npm publish` by hand) before this workflow can take over for every release after it. See the comments at the top of `release.yml` for the exact Trusted Publishing setup steps.
 
-The one genuinely manual, one-time exception is the very first release ever: npm's OIDC Trusted Publishing can't be configured for a package that has never been published, so that first version has to go out some other way (e.g. `npm login` and `npm publish` by hand) before `publish.yml` can take over for every release after it. See the comments at the top of `publish.yml` for the exact Trusted Publishing setup steps.
+There's also a local escape hatch if the automated flow is ever unavailable: `npm run release` (`n8n-node release`) bumps the version, updates the changelog, and tags/pushes/creates the GitHub release, but — by design — never publishes to npm itself, to keep every real publish going through a workflow that attaches provenance.
 
 ### Versioning
 
