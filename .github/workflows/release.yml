@@ -1,0 +1,96 @@
+# Releases this n8n community node package: bumps the version, tags, pushes,
+# publishes to npm with provenance, and creates the GitHub release - all in one
+# manually-triggered run. Uses Unleash's shared release workflow so this repo's
+# release process matches every other Unleash npm package. Modeled on the
+# sibling workflow at:
+#   https://github.com/Unleash/toolbar/blob/main/.github/workflows/release.yml
+#
+# ─── BEFORE RUNNING THIS ───────────────────────────────────────────────────────
+#
+# - Update CHANGELOG.md by hand first, in its own PR merged to main. This
+#   workflow doesn't touch it - the shared template generates GitHub release
+#   notes from commit history instead, so CHANGELOG.md only stays accurate if
+#   someone updates it deliberately before tagging.
+# - Decide the next version number; you'll type it in when you run this
+#   workflow from the Actions tab.
+#
+# ─── ONE-TIME SETUP: npm Trusted Publishing ───────────────────────────────────
+#
+# Same mechanism as before, but the workflow filename npm needs to match is
+# now this file, not publish.yml:
+#
+#   1. Trusted Publishing can't be configured for a package that has never
+#      been published. Publish the very first version some other way first
+#      (e.g. `npm login` and `npm publish` by hand, from a built `dist/`).
+#   2. On npmjs.com: package settings → Publishing access → Trusted
+#      Publishers → Add a publisher. Fill in:
+#        Organization or user: <your-github-org-or-username>
+#        Repository:           <your-repo-name>
+#        Workflow filename:    release.yml   (filename only, not the full path)
+#        Environment:          (leave blank unless you use GitHub Environments)
+#   3. A newly added Trusted Publisher expires if it doesn't see a successful
+#      publish within 2 days - don't set this up before you're ready to run
+#      this workflow for real.
+#
+# ─── WHY THE VALIDATE JOB BELOW ────────────────────────────────────────────────
+#
+# The shared workflow (Unleash/.github) is a generic npm-package template - it
+# has no idea this is an n8n community node, and its own publish step is a
+# bare `npm publish`. This package's own `prepublishOnly` script (scaffolded
+# by @n8n/node-cli alongside its own release tooling) deliberately fails a
+# bare `npm publish` unless RELEASE_MODE is set, specifically to force every
+# release through checks like these. The `setup-command` below sets it, which
+# satisfies that guard rather than working around it, with no change needed
+# to the shared template.
+
+name: 🚀 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New version semver
+        required: true
+        type: string
+      tag:
+        description: npm tag
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  validate:
+    name: Lint, build, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+
+  release:
+    name: Release
+    needs: validate
+    uses: Unleash/.github/.github/workflows/npm-release.yml@v4.0.2
+    with:
+      version: ${{ github.event.inputs.version }}
+      tag: ${{ github.event.inputs.tag }}
+      # This repo uses npm (package-lock.json), not the template's default
+      # pnpm. RELEASE_MODE=true satisfies this package's own prepublishOnly
+      # guard - see "WHY THE VALIDATE JOB BELOW" above.
+      setup-command: 'npm ci && echo "RELEASE_MODE=true" >> "$GITHUB_ENV"'
+    secrets:
+      UNLEASH_BOT_APP_ID: ${{ secrets.UNLEASH_BOT_APP_ID }}
+      UNLEASH_BOT_PRIVATE_KEY: ${{ secrets.UNLEASH_BOT_PRIVATE_KEY }}

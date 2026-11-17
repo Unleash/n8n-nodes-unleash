@@ -2,6 +2,9 @@
 
 ## 0.1.0 (unreleased)
 
-- Unleash node with the Flag resource: Evaluate and Get Enabled operations, evaluated through the Frontend API.
-- Unleash Frontend API credential for Unleash and Unleash Edge.
-- Evaluate reports usage metrics to Unleash by default.
+- Unleash node with the Flag resource: Evaluate (one flag) and Get Enabled (every enabled flag), both evaluated through the Unleash Frontend API.
+- Unleash Frontend API credential, for Unleash itself or Unleash Edge.
+- Both operations cache results for 30 seconds by default (**Cache Duration (Seconds)**), the same refresh interval Unleash's own frontend SDKs use, and revalidate efficiently once the cache goes stale rather than refetching blindly.
+- If Unleash is unreachable, both operations fall back to the last cached result and log a warning instead of failing the workflow.
+- Evaluate can optionally use a lighter single-flag endpoint (**Lookup Method**), currently only available on Unleash Edge.
+- Evaluate's **Report Usage** metric is off by default.

@@ -37,7 +37,7 @@ Frontend tokens are built to be shared with client-side apps: they can only read
 
 ## Operations
 
-The node has one resource, **Flag**, with two operations. Both take the same context fields.
+The node has one resource, **Flag**, with two operations. Both take the same context fields, and both cache their result for 30 seconds by default — see [Caching](#caching) below.
 
 ### Evaluate
 
@@ -60,13 +60,25 @@ A flag that is disabled, archived, unknown or outside the token's projects retur
 
 Use an **If** or **Switch** node on `{{ $json.enabled }}` or `{{ $json.variant.name }}` to branch. A variant payload is returned as a string; parse a JSON payload with `{{ JSON.parse($json.variant.payload.value) }}`.
 
-**Report Usage** is on by default. Each evaluation then sends one usage metric to Unleash, so flags that are only used in n8n still show as in use, and n8n appears among the connected SDKs (as `n8n-nodes-unleash`). If the metric can't be sent, the node logs a warning and the workflow carries on.
+**Lookup Method** defaults to **Full Flag List**, which fetches every flag for the context and picks this one out of the list — works on any Unleash server. Set it to **Single Flag (Edge Only)** to use a lighter endpoint instead, fetching only this flag. That endpoint only exists on Unleash Edge today, so this only works when the Base URL above points at an Edge instance, not a standard Unleash server.
+
+**Report Usage** is off by default. Turn it on to send a usage metric to Unleash for every evaluation, so flags that are only used in n8n still show as in use, and n8n appears among the connected SDKs (as `n8n-nodes-unleash`). It's an extra call on every evaluation, and Unleash Edge isn't designed to take that on a hot path, so leave it off unless you need Unleash's "last seen" data for this flag. If the metric can't be sent, the node logs a warning and the workflow carries on.
 
 ### Get Enabled
 
 Returns one item per flag that is enabled for the context, in the same shape as Evaluate. It does not report usage: counting every returned flag as used would hide flags that are really stale.
 
 When no flag is enabled, the node returns no items and the workflow stops there. Turn on **Always Output Data** in the node settings if the workflow should continue.
+
+### Caching
+
+Evaluating one flag still means fetching every flag for the context on a standard Unleash server — there's no narrower request available there (Edge adds one; see **Lookup Method** above). So instead of calling Unleash on every single node execution, **Cache Duration (Seconds)** (default: 30, the same default refresh interval Unleash's own frontend SDKs use) reuses a previous result for the same context and credential rather than fetching again. For something that needs to react quickly, like a kill switch, use a short duration (1–3 seconds) rather than 0 — every other flag in Unleash follows the same consistency model, and a few seconds is negligible next to how long it takes a person to act on the change. See [Agent kill switch](templates/agent-kill-switch.json).
+
+On top of that, both a standard Unleash server and Unleash Edge support conditional requests (`If-None-Match`) — this node always uses `GET`, specifically because that's what makes conditional requests work at all (Express, which Unleash's server is built on, only honors a matching `If-None-Match` for GET/HEAD, never POST). Once the cache above is stale, the node revalidates instead of blindly refetching, and a `304 Not Modified` replaces resending the full body when nothing changed. That saves bandwidth, not evaluation work on the server — the cache duration above is what actually skips that — but it means even a short Cache Duration still gets this benefit on every call it makes, with no extra staleness: every execution that isn't served straight from cache makes a real round trip and gets the current, confirmed answer, it just doesn't re-download it when nothing changed.
+
+If a call to Unleash fails — a network error, a timeout, a gateway problem — the node falls back to the last cached result (however stale) and logs a warning, rather than failing the whole workflow over what's usually transient; this is the same degrade-gracefully pattern official Unleash SDKs use. It only throws when there's nothing cached yet to fall back to, which is only possible on the very first call for a given context. Redirects are followed automatically (the node never disables that); if redirects are ever exhausted or fail, that's treated as the same kind of failure as any other request error, with the same fallback.
+
+The cache lives in the n8n process, not in the workflow: separate workflows that evaluate the same context against the same Unleash credential share one cached result. In a queue-mode n8n install, each worker is its own separate process and caches independently.
 
 ### Context fields
 
@@ -171,7 +183,15 @@ npm run lint
 npm test        # builds, then runs the unit tests in test/
 ```
 
-Releases are published to npm from GitHub Actions with provenance. See `.github/workflows/publish.yml`.
+### Releasing
+
+Releasing is a manual GitHub Actions run, no local checkout required: open the **Actions** tab, run **🚀 Release**, and type in the new version (and, if it's a pre-release, the npm tag). That one run lints, builds, and tests the package; bumps the version; updates the tag; pushes; publishes to npm with provenance; and creates the GitHub release — matching how other Unleash npm packages release (see [`Unleash/toolbar`](https://github.com/Unleash/toolbar/blob/main/.github/workflows/release.yml)), via a shared workflow in `Unleash/.github`. See `.github/workflows/release.yml` for exactly what each step does and why, including why it needs its own validation job even though a generic org-wide template handles the actual release mechanics.
+
+Update `CHANGELOG.md` by hand, in its own PR, before running a release — the workflow doesn't touch it; GitHub's release notes are generated from commit history instead.
+
+The one genuinely manual, one-time exception is the very first release ever: npm's OIDC Trusted Publishing can't be configured for a package that has never been published, so that first version has to go out some other way (e.g. `npm login` and `npm publish` by hand) before this workflow can take over for every release after it. See the comments at the top of `release.yml` for the exact Trusted Publishing setup steps.
+
+There's also a local escape hatch if the automated flow is ever unavailable: `npm run release` (`n8n-node release`) bumps the version, updates the changelog, and tags/pushes/creates the GitHub release, but — by design — never publishes to npm itself, to keep every real publish going through a workflow that attaches provenance.
 
 ### Versioning
 
@@ -183,7 +203,7 @@ The package and the node have separate version numbers, and they don't need to m
 When you release:
 
 - For a fix, or for something new that existing workflows don't use (an operation, an optional field), bump only the package version.
-- For a change that would make existing workflows behave differently (renaming or removing a parameter, changing the output, changing a default), add a node version with [light versioning](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning): set `version: [1, 1.1]`, show the new behavior only from 1.1 with `@version` in `displayOptions`, set `nodeVersion` in `Unleash.node.json` to the new version, and bump the package's minor version. Declarative nodes like this one can't use full versioning.
+- For a change that would make existing workflows behave differently (renaming or removing a parameter, changing the output, changing a default), add a node version with [light versioning](https://docs.n8n.io/connect/create-nodes/build-your-node/reference/versioning): set `version: [1, 1.1]`, show the new behavior only from 1.1 with `@version` in `displayOptions`, set `nodeVersion` in `Unleash.node.json` to the new version, and bump the package's minor version. Full versioning (a separate class per version) is also available now that the node is programmatic-style, but hasn't been needed yet — light versioning covers every case so far.
 - n8n saves only the parameters that differ from their default, so a new default reaches every workflow that never changed the field. Treat it as a breaking change.
 - Name the node version in `CHANGELOG.md` whenever it changes.
 
