@@ -1,8 +1,14 @@
 # Changelog
 
-## v0.1.1
+## v0.1.2
 
-- Switch to provenance-backed releases via GitHub Actions — no functional change
+- Fixed `Base URL` placeholder and Evaluate's `action` text basexd on UX guidelines ([`#7`](https://github.com/Unleash/n8n-nodes-unleash/pull/7)).
+- Fixed release workflow to make sure `dist/` is always included in the released package ([`#8`](https://github.com/Unleash/n8n-nodes-unleash/pull/8)).
+
+
+## v0.1.1 (deprecated)
+
+- Switch to provenance-backed releases via GitHub Actions — no functional change.
 
 
 ## 0.1.0
