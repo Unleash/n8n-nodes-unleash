@@ -42,6 +42,13 @@
 # release through checks like these. The `setup-command` below sets it, which
 # satisfies that guard rather than working around it, with no change needed
 # to the shared template.
+#
+# The `release` job below runs in its own checkout, separate from `validate`'s
+# - needing it doesn't share its build output. So `setup-command` also runs
+# `npm run build` itself; without it, `npm publish` packs whatever `dist/`
+# happens to exist on that fresh checkout (nothing), and since `files: ["dist"]`
+# in package.json just matches zero files rather than erroring, npm silently
+# publishes an empty package. This is exactly what happened to 0.1.1.
 
 name: 🚀 Release
 
@@ -89,8 +96,9 @@ jobs:
       tag: ${{ github.event.inputs.tag }}
       # This repo uses npm (package-lock.json), not the template's default
       # pnpm. RELEASE_MODE=true satisfies this package's own prepublishOnly
-      # guard - see "WHY THE VALIDATE JOB BELOW" above.
-      setup-command: 'npm ci && echo "RELEASE_MODE=true" >> "$GITHUB_ENV"'
+      # guard - see "WHY THE VALIDATE JOB BELOW" above. `npm run build` is
+      # required here too - this job's checkout has no dist/ of its own.
+      setup-command: 'npm ci && npm run build && echo "RELEASE_MODE=true" >> "$GITHUB_ENV"'
     secrets:
       UNLEASH_BOT_APP_ID: ${{ secrets.UNLEASH_BOT_APP_ID }}
       UNLEASH_BOT_PRIVATE_KEY: ${{ secrets.UNLEASH_BOT_PRIVATE_KEY }}
