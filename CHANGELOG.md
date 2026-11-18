@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.1
+
+- Switch to provenance-backed releases via GitHub Actions — no functional change
+
+
 ## 0.1.0
 
 - Unleash node with the Flag resource: Evaluate (one flag) and Get Enabled (every enabled flag), both evaluated through the Unleash Frontend API ([`#1`](https://github.com/Unleash/n8n-nodes-unleash/pull/1)).
