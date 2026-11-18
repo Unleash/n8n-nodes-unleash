@@ -1,18 +1,15 @@
-### Changelog
+# Changelog
 
-All notable changes to this project will be documented in this file. Dates are displayed in UTC.
-
-#### v0.1.1
+## v0.1.1
 
 - Switch to provenance-backed releases via GitHub Actions — no functional change
 
-#### 0.1.0
 
-- Pin dev-only resolution of @n8n/node-cli and n8n-workflow off the rc track [`#5`](https://github.com/Unleash/n8n-nodes-unleash/pull/5)
-- Cache flag evaluations and revalidate with ETag against Edge [`#4`](https://github.com/Unleash/n8n-nodes-unleash/pull/4)
-- Add ten n8n workflow templates as real workflow JSON [`#3`](https://github.com/Unleash/n8n-nodes-unleash/pull/3)
-- Add worked examples and screenshots to the README [`#2`](https://github.com/Unleash/n8n-nodes-unleash/pull/2)
-- Add Unleash node: evaluate flags through the Frontend API [`#1`](https://github.com/Unleash/n8n-nodes-unleash/pull/1)
-- Add Unleash node for evaluating flags through the Frontend API [`f53365b`](https://github.com/Unleash/n8n-nodes-unleash/commit/f53365b7976c11971023d63d189e437c2eddd417)
-- Add the six spec templates as real n8n workflow JSON [`31a7f22`](https://github.com/Unleash/n8n-nodes-unleash/commit/31a7f22ebd2ee212961bf5776ef4cdadd36ec3c5)
-- Add four more templates adapted from the README's worked examples [`2e4c1a4`](https://github.com/Unleash/n8n-nodes-unleash/commit/2e4c1a4b16cec9e63e026466dd68c5ee46862bd2)
+## 0.1.0
+
+- Unleash node with the Flag resource: Evaluate (one flag) and Get Enabled (every enabled flag), both evaluated through the Unleash Frontend API ([`#1`](https://github.com/Unleash/n8n-nodes-unleash/pull/1)).
+- Unleash Frontend API credential, for Unleash itself or Unleash Edge ([`#1`](https://github.com/Unleash/n8n-nodes-unleash/pull/1)).
+- Both operations cache results for 30 seconds by default (**Cache Duration (Seconds)**), the same refresh interval Unleash's own frontend SDKs use, and revalidate efficiently once the cache goes stale rather than refetching blindly ([`#4`](https://github.com/Unleash/n8n-nodes-unleash/pull/4)).
+- If Unleash is unreachable, both operations fall back to the last cached result and log a warning instead of failing the workflow ([`#4`](https://github.com/Unleash/n8n-nodes-unleash/pull/4)).
+- Evaluate can optionally use a lighter single-flag endpoint (**Lookup Method**), currently only available on Unleash Edge ([`#4`](https://github.com/Unleash/n8n-nodes-unleash/pull/4)).
+- Evaluate's **Report Usage** metric is off by default ([`#4`](https://github.com/Unleash/n8n-nodes-unleash/pull/4)).
