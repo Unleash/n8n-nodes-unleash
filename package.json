@@ -1,6 +1,6 @@
 {
 	"name": "@unleash/n8n-nodes-unleash",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "n8n community node that evaluates Unleash feature flags through the Frontend API",
 	"license": "MIT",
 	"homepage": "https://github.com/Unleash/n8n-nodes-unleash#readme",
