@@ -16,7 +16,7 @@ export const flagDescription: INodeProperties[] = [
 			{
 				name: 'Evaluate',
 				value: 'evaluate',
-				action: 'Evaluate a flag',
+				action: 'Evaluate flag',
 				description: 'Check whether a flag is enabled for a context and get its variant',
 			},
 			{

@@ -22,7 +22,7 @@ export class UnleashFrontendApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			required: true,
-			placeholder: 'https://unleash.example.com/api/frontend',
+			placeholder: 'e.g. https://unleash.example.com/api/frontend',
 			description:
 				'The Frontend API URL of your Unleash instance or Unleash Edge. It ends in /api/frontend.',
 		},
