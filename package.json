@@ -1,6 +1,6 @@
 {
 	"name": "@unleash/n8n-nodes-unleash",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "n8n community node that evaluates Unleash feature flags through the Frontend API",
 	"license": "MIT",
 	"homepage": "https://github.com/Unleash/n8n-nodes-unleash#readme",
@@ -50,8 +50,8 @@
 	},
 	"devDependencies": {
 		"@n8n/node-cli": "^0.57.3",
-		"n8n-workflow": "~2.47.2",
 		"eslint": "9.32.0",
+		"n8n-workflow": "~2.47.2",
 		"prettier": "3.6.2",
 		"release-it": "^21.1.0",
 		"typescript": "5.9.2",
