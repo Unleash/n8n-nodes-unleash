@@ -1,5 +1,7 @@
 # n8n-nodes-unleash
 
+✅ **Verified by n8n** — available directly from the canvas on n8n Cloud, and via Community Nodes on self-hosted instances.
+
 An [n8n](https://n8n.io) community node for [Unleash](https://www.getunleash.io). Evaluate feature flags in your workflows and AI agents, and react to flag changes.
 
 The node evaluates flags through the Unleash [Frontend API](https://docs.getunleash.io/api/frontend-api-overview) with a frontend token, on every Unleash plan. It works against Unleash itself or against [Unleash Edge](https://docs.getunleash.io/api/edge-api-overview).
@@ -16,7 +18,9 @@ The node evaluates flags through the Unleash [Frontend API](https://docs.getunle
 
 ## Installation
 
-Follow the n8n guide to [install a community node](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) and enter the package name:
+**n8n Cloud:** search for "Unleash" directly from the canvas and drag it into your workflow — no install step needed, now that the node is verified. If it doesn't show up, open Settings > Admin Panel and confirm **Verified Community Nodes** is enabled, then restart.
+
+**Self-hosted:** follow the n8n guide to [install a community node](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) and enter the package name:
 
 ```
 @unleash/n8n-nodes-unleash

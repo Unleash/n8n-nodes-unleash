@@ -83,12 +83,12 @@
     },
     {
       "parameters": {
-        "content": "## Guarded automation (kill switch)\n\nRuns every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — **Run the automation** is a No Operation node standing in for the real work. If it's off, the workflow stops with **Stop and Error** instead. Turning the flag off in Unleash pauses the automation without touching this workflow.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential.\n2. Replace **Run the automation** with your real steps, and set the Schedule Trigger's interval to match.\n\nWorks on every Unleash plan — only needs a Frontend API token.",
-        "height": 220,
+        "content": "## Guarded automation (kill switch)\n\nRuns every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — **Run the automation** is a No Operation node standing in for the real work. If it's off, the workflow stops with **Stop and Error** instead. Turning the flag off in Unleash pauses the automation without touching this workflow.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential.\n2. Replace **Run the automation** with your real steps, and set the Schedule Trigger's interval to match.\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
+        "height": 530,
         "width": 340
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [0, -280],
+      "position": [0, -510],
       "typeVersion": 1,
       "id": "a389a19d-4517-446b-82ce-bc069e89d52c",
       "name": "Sticky Note"

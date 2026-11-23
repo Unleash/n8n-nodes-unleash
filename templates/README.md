@@ -2,7 +2,9 @@
 
 Ten ready-made n8n workflows — the [build spec](https://docs.n8n.io/integrations/community-nodes/build-community-nodes/)'s original six, plus four adapted from the worked examples in the main [README](../README.md) — exported as workflow JSON. Each file is a complete n8n workflow: nodes, their settings, and sticky notes that explain the workflow. Import one with **n8n's `...` menu > Import > From File** (or, on n8n versions before 3.0, **Import > From URL** if you host the raw file — that option is removed in 3.0), add your own credentials, and run it.
 
-This folder is the source of truth for these templates — the place to review and version them, test them against new MCP server releases, and link to directly from docs or the landing page. It's also the staging area before submitting to the [n8n template gallery](https://n8n.io/workflows/), which reviews every submission against its [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/).
+This folder is the source of truth for these templates — the place to review and version them, test them against new MCP server releases, and link to directly from docs or the landing page. It's also the staging area before submitting to the [n8n template gallery](https://n8n.io/workflows/), which reviews every submission against its [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/) and, more specifically, its [template submission guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77) — checked in full against every template here; see "Before submitting to the gallery" below for what that turned up.
+
+`@unleash/n8n-nodes-unleash` is now [verified by n8n](../README.md) and live on n8n Cloud (since 2026-11-23) — relevant below wherever a template's sticky note talks about install surface.
 
 ## The ten templates
 
@@ -23,7 +25,7 @@ All ten import cleanly into n8n (checked by importing each file into a local ins
 
 ## Uses the community node
 
-Five templates depend on `@unleash/n8n-nodes-unleash` (tested at **v0.1.0**, the version in this repo's `package.json`): **Agent kill switch**, **Guarded automation**, **Flag-gated deploy gate**, **Route a tenant by variant** and **Gate an AI agent's tools by flag**. The other five use only n8n's own built-in nodes (Webhook, If, Switch, Remove Duplicates, Slack, Jira, Schedule Trigger, AI Agent, MCP Client). That means those five can go to the gallery before the node itself is verified — the Enterprise ones also need an Enterprise trial to actually exercise, independent of the node.
+Five templates depend on `@unleash/n8n-nodes-unleash` (tested at **v0.1.2**): **Agent kill switch**, **Guarded automation**, **Flag-gated deploy gate**, **Route a tenant by variant** and **Gate an AI agent's tools by flag**. Per the template submission guidelines' "Templates with community nodes" section, each one's sticky note now names the package, states the tested version, links to n8n's community-node install docs, and says it's available on both n8n Cloud and self-hosted — true as of the node's verification on 2026-11-23. The other five use only n8n's own built-in nodes (Webhook, If, Switch, Remove Duplicates, Slack, Jira, Schedule Trigger, AI Agent, MCP Client) — the Enterprise ones among them still need a real Unleash Enterprise instance to test against before they're submission-ready, independent of the node's own verification status.
 
 ## Caching and usage reporting
 
@@ -49,12 +51,13 @@ Everything else in n8n 3.0's breaking-changes list — Docker-only deployment, t
 
 ## Before submitting to the gallery
 
-Per n8n's [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/):
+Checked in full against n8n's [template guidelines](https://docs.n8n.io/integrations/creating-nodes/build/reference/) and its more specific [template submission guidelines](https://n8n.notion.site/Template-submission-guidelines-9959894476734da3b402c90b124b1f77) (2026-11-23):
 - [x] Each template names a practical use case (above).
 - [x] Each template was tested by importing the exact JSON here into a fresh workflow.
-- [x] An image for each of the four new community-node templates — reused directly from the main README's worked examples, since the workflows are the same ones shown there (`docs/images/guarded-automation.png`, `flag-gated-deploy-gate.png`, `route-tenant-by-variant.png`, `gate-ai-agent-tools-by-flag.png`).
-- [ ] **Not yet done:** an image for `agent-kill-switch.json`, the one remaining community-node template without one, in case the gallery's auto-generated preview doesn't render.
-- [x] `agent-kill-switch.json` and the four new community-node templates all name `@unleash/n8n-nodes-unleash` and its tested version (0.1.0) above.
+- [x] No leaked secrets or private identifiers — checked directly, not assumed: `pinData` is empty `{}` in all ten files (a standard export field, not real pinned data), no embedded email addresses, every credential reference already uses `"id": "placeholder"` with a generic name (e.g. "Unleash Frontend account"), and every externally-facing URL is a clear placeholder (`your-unleash-instance`, `your-deploy-api.example.com`).
+- [x] An image for all five community-node templates, each (re)captured at retina resolution (2800x1740) from a real `npm run dev` instance, with the n8n 3.0 banner and onboarding dialogs hidden first: `docs/images/guarded-automation.png`, `flag-gated-deploy-gate.png`, `route-tenant-by-variant.png`, `gate-ai-agent-tools-by-flag.png`, and the new `agent-kill-switch.png`. The guidelines require this for any template using a community node ("so someone can inspect the workflow if its preview doesn't render"). Recapturing also caught a real bug: the sticky notes' new paragraph (tested version + install link) didn't fit in the box heights set when that text was added, so the note text spilled past the box into the node row below — fixed by resizing and repositioning all five sticky notes to fit the actual rendered content exactly.
+- [x] Every community-node template's sticky note names `@unleash/n8n-nodes-unleash`, states the tested version (0.1.2), links to n8n's [community-node install docs](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation), and says it's available on both n8n Cloud and self-hosted — per the guidelines' "Templates with community nodes" section.
+- [ ] **Not yet done, and a real gap per the guidelines, not just a risk we flagged ourselves:** "test the exact JSON file you plan to submit... run the complete workflow with representative input, check the final result in the destination service" — the four Enterprise templates are still "Structural only," never run against a live Unleash Enterprise instance. They aren't submission-ready as written; this needs real Enterprise access to close, not more repo work.
 
 ## A note on scope
 

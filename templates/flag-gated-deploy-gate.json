@@ -115,12 +115,12 @@
     },
     {
       "parameters": {
-        "content": "## Flag-gated deploy gate\n\nA webhook from your CI system triggers the node, with the service name passed in as a custom property under Additional Context. If the flag for that stage is on, the workflow calls your deployment API and responds `deployed`; if it's off, it responds `blocked` without deploying. This turns Unleash into a release gate your pipeline already talks to over HTTP, with no Unleash write access needed anywhere in the pipeline.\n\n**Setup:**\n1. Add a Header Auth credential with a random secret, and have your CI system send it as the `Authorization` header when it calls this webhook's Production URL.\n2. Connect your own Unleash Frontend API token credential.\n3. Point **Trigger deployment (your API)** at your real deployment endpoint — it has no credential of its own here, since that's specific to your API.\n\nWorks on every Unleash plan — only needs a Frontend API token. `deploy-canary-stage-2` and the `service` property are stand-ins for your own flag and strategy constraint.",
-        "height": 280,
+        "content": "## Flag-gated deploy gate\n\nA webhook from your CI system triggers the node, with the service name passed in as a custom property under Additional Context. If the flag for that stage is on, the workflow calls your deployment API and responds `deployed`; if it's off, it responds `blocked` without deploying. This turns Unleash into a release gate your pipeline already talks to over HTTP, with no Unleash write access needed anywhere in the pipeline.\n\n**Setup:**\n1. Add a Header Auth credential with a random secret, and have your CI system send it as the `Authorization` header when it calls this webhook's Production URL.\n2. Connect your own Unleash Frontend API token credential.\n3. Point **Trigger deployment (your API)** at your real deployment endpoint — it has no credential of its own here, since that's specific to your API.\n\nWorks on every Unleash plan — only needs a Frontend API token. `deploy-canary-stage-2` and the `service` property are stand-ins for your own flag and strategy constraint.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
+        "height": 560,
         "width": 420
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [0, -320],
+      "position": [0, -540],
       "typeVersion": 1,
       "id": "b907937a-c1d5-49ba-9be7-1b586e2b00c8",
       "name": "Sticky Note"
