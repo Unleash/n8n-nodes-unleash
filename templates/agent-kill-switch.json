@@ -82,12 +82,12 @@
     {
       "parameters": {
         "content": "## Agent kill switch\n\nEvaluate a flag before an agent workflow runs. If the flag is off, stop the workflow instead of letting the agent act.\n\nSwap in your own trigger and replace **Rest of your agent workflow** with the real agent steps (AI Agent, tool calls, etc).\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\n**Cache Duration is set to 3 seconds** here, instead of the 30-second default: a kill switch should react quickly, but it still follows the same consistency model as every other flag rather than skipping caching altogether - a few seconds is negligible next to how long it takes a person to act on the change.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
-        "height": 280,
+        "height": 500,
         "width": 320
       },
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
-      "position": [192, -240],
+      "position": [192, -460],
       "id": "82c5cee6-9819-498d-84c3-d1ddd85d7743",
       "name": "Sticky Note"
     }
