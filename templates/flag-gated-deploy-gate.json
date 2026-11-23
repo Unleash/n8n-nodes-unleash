@@ -76,7 +76,7 @@
       "typeVersion": 2.4,
       "position": [448, 0],
       "id": "bb629432-e119-4d6b-aed8-a94202b2307b",
-      "name": "If"
+      "name": "Deploy allowed?"
     },
     {
       "parameters": {
@@ -137,11 +137,11 @@
     "Evaluate a flag": {
       "main": [
         [
-          { "node": "If", "type": "main", "index": 0 }
+          { "node": "Deploy allowed?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "If": {
+    "Deploy allowed?": {
       "main": [
         [
           { "node": "Trigger deployment (your API)", "type": "main", "index": 0 }

@@ -61,7 +61,7 @@
       "typeVersion": 2.4,
       "position": [448, 0],
       "id": "e8a4329c-fcf2-49e6-8129-5b50d92464c9",
-      "name": "If"
+      "name": "Automation allowed to run?"
     },
     {
       "parameters": {},
@@ -79,11 +79,11 @@
       "typeVersion": 1,
       "position": [672, 96],
       "id": "a8f1d00b-4454-47fb-b461-c2b40bf62a02",
-      "name": "Stop and Error"
+      "name": "Automation disabled"
     },
     {
       "parameters": {
-        "content": "## Guarded automation (kill switch)\n\nRuns every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — **Run the automation** is a No Operation node standing in for the real work. If it's off, the workflow stops with **Stop and Error** instead. Turning the flag off in Unleash pauses the automation without touching this workflow.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential.\n2. Replace **Run the automation** with your real steps, and set the Schedule Trigger's interval to match.\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
+        "content": "## Guarded automation (kill switch)\n\nRuns every hour. Before it does anything, it evaluates a flag. If the flag is on, the automation runs — **Run the automation** is a No Operation node standing in for the real work. If it's off, the workflow stops with **Automation disabled** instead. Turning the flag off in Unleash pauses the automation without touching this workflow.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential.\n2. Replace **Run the automation** with your real steps, and set the Schedule Trigger's interval to match.\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
         "height": 530,
         "width": 340
       },
@@ -105,17 +105,17 @@
     "Evaluate a flag": {
       "main": [
         [
-          { "node": "If", "type": "main", "index": 0 }
+          { "node": "Automation allowed to run?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "If": {
+    "Automation allowed to run?": {
       "main": [
         [
           { "node": "Run the automation", "type": "main", "index": 0 }
         ],
         [
-          { "node": "Stop and Error", "type": "main", "index": 0 }
+          { "node": "Automation disabled", "type": "main", "index": 0 }
         ]
       ]
     }

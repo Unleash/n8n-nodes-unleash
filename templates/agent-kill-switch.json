@@ -59,7 +59,7 @@
       "typeVersion": 2.4,
       "position": [448, 0],
       "id": "ea25758e-be85-47c6-b8fb-1488bf30262b",
-      "name": "If"
+      "name": "Agent allowed to act?"
     },
     {
       "parameters": {},
@@ -77,7 +77,7 @@
       "typeVersion": 1,
       "position": [672, 96],
       "id": "c2a83bec-5ba0-43c0-928f-25639650b0c3",
-      "name": "Stop and Error"
+      "name": "Block the agent"
     },
     {
       "parameters": {
@@ -103,17 +103,17 @@
     "Evaluate a flag": {
       "main": [
         [
-          { "node": "If", "type": "main", "index": 0 }
+          { "node": "Agent allowed to act?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "If": {
+    "Agent allowed to act?": {
       "main": [
         [
           { "node": "Rest of your agent workflow", "type": "main", "index": 0 }
         ],
         [
-          { "node": "Stop and Error", "type": "main", "index": 0 }
+          { "node": "Block the agent", "type": "main", "index": 0 }
         ]
       ]
     }

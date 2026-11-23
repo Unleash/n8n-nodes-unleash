@@ -67,7 +67,7 @@
       "typeVersion": 2.4,
       "position": [448, 0],
       "id": "31d539ab-3bbf-489f-b1c0-f14ecfb9b1f6",
-      "name": "If"
+      "name": "Advanced tools enabled?"
     },
     {
       "parameters": {
@@ -122,15 +122,41 @@
     },
     {
       "parameters": {
-        "content": "## Gate an AI agent's tools by flag\n\nA tool attached to an AI Agent node is always available to the model — there's no built-in way to show or hide one tool based on a condition. To gate a tool, evaluate a flag first and use an **If** node to route to one of two agents: one wired to only the tools you're comfortable the model always has (**Support agent (standard)**), the other wired to the same tools plus the one that takes a real action — here, sending an email (**Support agent (advanced)**). Turning the flag off removes the tool itself, not just a check the model could ignore or route around.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential, and a Header Auth credential for the webhook.\n2. **Support agent (advanced)** only has its Gmail Tool wired here, to spotlight the gating — attach a Chat Model to it too, the same way **Support agent (standard)** has one, before you run this for real.\n3. Connect your own Gmail credential to **Send refund email**, and your own model credential to the Chat Model node(s) — Anthropic is shown here, swap for any model the AI Agent node supports.\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
-        "height": 620,
-        "width": 440
+        "content": "## Gate an AI agent's tools by flag\n\nA tool attached to an AI Agent node is always available to the model — there's no built-in way to show or hide one tool based on a condition. This template evaluates a flag first, then routes to one of two agents: one with only the tools you're always comfortable the model having, the other with the same tools plus one that takes a real action. Turning the flag off removes the tool itself, not just a check the model could ignore or route around.\n\n**Setup:**\n1. Connect your own Unleash Frontend API token credential, and a Header Auth credential for the webhook.\n2. **Support agent (advanced)** only has its Gmail Tool wired here, to spotlight the gating — attach a Chat Model to it too, the same way **Support agent (standard)** has one, before you run this for real.\n3. Connect your own Gmail credential to **Send refund email**, and your own model credential to the Chat Model node(s) — Anthropic is shown here, swap for any model the AI Agent node supports.\n\nWorks on every Unleash plan — only needs a Frontend API token.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
+        "height": 540,
+        "width": 460
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [0, -560],
+      "position": [-520, -220],
       "typeVersion": 1,
       "id": "342f2011-3047-4c67-98d4-9b5f4b4aed59",
       "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Receive and evaluate\n\n**Support request received** triggers on an incoming webhook, then **Evaluate a flag** checks whether this request gets the advanced toolset. **Advanced tools enabled?** routes to one of two agents based on the result.",
+        "height": 160,
+        "width": 580,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-16, -260],
+      "typeVersion": 1,
+      "id": "05255e02-16bc-47ce-9c70-5be6806f9927",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Route to the right agent\n\n**Support agent (standard)** only has the tools you're always comfortable the model having. **Support agent (advanced)** has the same tools plus **Send refund email** — a real action, gated entirely behind the flag. Both share the same Chat Model pattern (Anthropic shown here).",
+        "height": 180,
+        "width": 420,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [560, -320],
+      "typeVersion": 1,
+      "id": "40acf44f-dc9e-4735-8a3f-c2769effef57",
+      "name": "Sticky Note2"
     }
   ],
   "connections": {
@@ -144,11 +170,11 @@
     "Evaluate a flag": {
       "main": [
         [
-          { "node": "If", "type": "main", "index": 0 }
+          { "node": "Advanced tools enabled?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "If": {
+    "Advanced tools enabled?": {
       "main": [
         [
           { "node": "Support agent (advanced)", "type": "main", "index": 0 }

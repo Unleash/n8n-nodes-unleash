@@ -12,7 +12,7 @@
       "typeVersion": 2.2,
       "position": [0, 0],
       "id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "name": "Webhook",
+      "name": "Incident alert received",
       "webhookId": "a1b2c3d4-0001-4000-8000-100000000001",
       "credentials": {
         "httpHeaderAuth": {
@@ -78,7 +78,7 @@
           "value": "incidents",
           "mode": "name"
         },
-        "text": "=:white_check_mark: Kill switch applied: `{{ $('Webhook').item.json.body.flagName }}` is now off in production.",
+        "text": "=:white_check_mark: Kill switch applied: `{{ $('Incident alert received').item.json.body.flagName }}` is now off in production.",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
@@ -101,7 +101,7 @@
           "value": "incidents",
           "mode": "name"
         },
-        "text": "=:warning: Kill switch for `{{ $('Webhook').item.json.body.flagName }}` did not switch the flag off directly — result: `{{ $json.kind }}`. It may need a change request approval, or the call failed. Check Unleash.",
+        "text": "=:warning: Kill switch for `{{ $('Incident alert received').item.json.body.flagName }}` did not switch the flag off directly — result: `{{ $json.kind }}`. It may need a change request approval, or the call failed. Check Unleash.",
         "otherOptions": {}
       },
       "type": "n8n-nodes-base.slack",
@@ -118,7 +118,7 @@
     },
     {
       "parameters": {
-        "content": "## Incident kill switch (Enterprise)\n\nAn alert from Datadog, PagerDuty, or any tool that can call a webhook turns a feature off through the Unleash MCP server, then posts the result to Slack.\n\n**Requires Unleash Enterprise** — the MCP server is Enterprise-only. [Start a trial](https://www.getunleash.io/plans/enterprise-payg).\n\n**Setup:**\n1. In your alerting tool, add a webhook action that POSTs to this workflow's Production URL, with a secret in a header your tool supports — match it in the Webhook node's Header Auth credential.\n2. The `Kill switch (MCP)` node's JSON input assumes your alert payload has a `flagName` field at `body.flagName`. Replace that expression with however your tool actually names the flag in its payload.\n3. Connect your own Bearer token credential (a personal access token) to both the MCP node and turn on the Remote MCP Server under Admin > Unleash in your instance.\n4. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\n`kill_switch` opens a change request instead of switching the flag directly when your environment requires one — the second Slack message covers that case. Tested against the tool's input schema in the `unleash-mcp` source; the exact response shape (`$json.kind`) has not been verified end to end against a live server, since this repo doesn't have Enterprise access. Re-check after your first real run.",
+        "content": "## Incident kill switch (Enterprise)\n\nAn alert from Datadog, PagerDuty, or any tool that can call a webhook turns a feature off through the Unleash MCP server, then posts the result to Slack.\n\n**Requires Unleash Enterprise** — the MCP server is Enterprise-only. [Start a trial](https://www.getunleash.io/plans/enterprise-payg).\n\n**Setup:**\n1. In your alerting tool, add a webhook action that POSTs to this workflow's Production URL, with a secret in a header your tool supports — match it in **Incident alert received**'s Header Auth credential.\n2. The `Kill switch (MCP)` node's JSON input assumes your alert payload has a `flagName` field at `body.flagName`. Replace that expression with however your tool actually names the flag in its payload.\n3. Connect your own Bearer token credential (a personal access token) to both the MCP node and turn on the Remote MCP Server under Admin > Unleash in your instance.\n4. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\n`kill_switch` opens a change request instead of switching the flag directly when your environment requires one — the second Slack message covers that case. Tested against the tool's input schema in the `unleash-mcp` source; the exact response shape (`$json.kind`) has not been verified end to end against a live server, since this repo doesn't have Enterprise access. Re-check after your first real run.",
         "height": 340,
         "width": 460
       },
@@ -130,7 +130,7 @@
     }
   ],
   "connections": {
-    "Webhook": {
+    "Incident alert received": {
       "main": [
         [
           { "node": "Kill switch (MCP)", "type": "main", "index": 0 }
