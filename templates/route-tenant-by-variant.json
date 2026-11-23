@@ -95,7 +95,7 @@
       "typeVersion": 3.5,
       "position": [448, 0],
       "id": "28095722-b9d2-43c1-89c3-ea6d9d818f4e",
-      "name": "Switch"
+      "name": "Route by variant"
     },
     {
       "parameters": {
@@ -151,7 +151,7 @@
       "typeVersion": 3.2,
       "position": [896, 0],
       "id": "1bce0566-e8f9-44bb-a5b5-de1b43b69ac1",
-      "name": "Merge"
+      "name": "Merge routed results"
     },
     {
       "parameters": {
@@ -178,15 +178,41 @@
     },
     {
       "parameters": {
-        "content": "## Route a tenant by variant\n\nEvaluate with the tenant ID as the **User ID**, so stickiness keeps the same tenant on the same variant across requests. A **Switch** node reads `{{ $json.variant.name }}` and calls one of two sub-workflows with **Execute Workflow** — stand-ins here for two versions of the same process (two pricing engines, two agent prompts, two notification templates — whatever you're routing). **Merge** brings the branches back together before logging which variant served the tenant.\n\n**Setup:**\n1. Add a Header Auth credential with a random secret for the webhook, and connect your own Unleash Frontend API token credential.\n2. Point each Execute Workflow node at your own sub-workflow, by ID.\n3. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\nBecause the Unleash variant drives the routing, you can move a tenant to the new version, or change the rollout percentage, without redeploying this workflow. `legacy` and `v2` are placeholder variant names — replace them with the names configured on your flag.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
-        "height": 620,
-        "width": 440
+        "content": "## Route a tenant by variant\n\nEvaluate with the tenant ID as the **User ID**, so stickiness keeps the same tenant on the same variant across requests — stand-ins here for two versions of the same process (two pricing engines, two agent prompts, two notification templates — whatever you're routing).\n\n**Setup:**\n1. Add a Header Auth credential with a random secret for the webhook, and connect your own Unleash Frontend API token credential.\n2. Point each Execute Workflow node at your own sub-workflow, by ID.\n3. Connect your own Slack credential and set the channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\nBecause the Unleash variant drives the routing, you can move a tenant to the new version, or change the rollout percentage, without redeploying this workflow. `legacy` and `v2` are placeholder variant names — replace them with the names configured on your flag.\n\nUses the [@unleash/n8n-nodes-unleash](https://github.com/Unleash/n8n-nodes-unleash) community node (tested at v0.1.2) for **Evaluate a flag**. It's verified by n8n — install it directly from the canvas on n8n Cloud, or via [Community Nodes](https://docs.n8n.io/integrations/community-nodes/installation-and-management/gui-installation) on a self-hosted instance.",
+        "height": 540,
+        "width": 460
       },
       "type": "n8n-nodes-base.stickyNote",
-      "position": [0, -580],
+      "position": [-520, -220],
       "typeVersion": 1,
       "id": "6c94a480-c574-443e-8cd6-adc5d1817bd5",
       "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Evaluate and route\n\n**Evaluate a flag** reads the variant for this tenant, then **Route by variant** reads `{{ $json.variant.name }}` and sends the item down one of two branches with **Execute Workflow**.",
+        "height": 140,
+        "width": 580,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-16, -260],
+      "typeVersion": 1,
+      "id": "05255e02-16bc-47ce-9c70-5be6806f9928",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Run, merge, and log\n\nEach branch calls its own sub-workflow with **Execute Workflow**. **Merge routed results** brings them back together, then **Log the variant served** posts which variant served the tenant to Slack.",
+        "height": 160,
+        "width": 580,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [656, -320],
+      "typeVersion": 1,
+      "id": "40acf44f-dc9e-4735-8a3f-c2769effef58",
+      "name": "Sticky Note2"
     }
   ],
   "connections": {
@@ -200,11 +226,11 @@
     "Evaluate a flag": {
       "main": [
         [
-          { "node": "Switch", "type": "main", "index": 0 }
+          { "node": "Route by variant", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Switch": {
+    "Route by variant": {
       "main": [
         [
           { "node": "Run: legacy pricing workflow", "type": "main", "index": 0 }
@@ -217,18 +243,18 @@
     "Run: legacy pricing workflow": {
       "main": [
         [
-          { "node": "Merge", "type": "main", "index": 0 }
+          { "node": "Merge routed results", "type": "main", "index": 0 }
         ]
       ]
     },
     "Run: v2 pricing workflow": {
       "main": [
         [
-          { "node": "Merge", "type": "main", "index": 1 }
+          { "node": "Merge routed results", "type": "main", "index": 1 }
         ]
       ]
     },
-    "Merge": {
+    "Merge routed results": {
       "main": [
         [
           { "node": "Log the variant served", "type": "main", "index": 0 }

@@ -12,7 +12,7 @@
       "typeVersion": 2.2,
       "position": [0, 0],
       "id": "c3d4e5f6-0003-4000-8000-000000000001",
-      "name": "Webhook",
+      "name": "Change request event received",
       "webhookId": "c3d4e5f6-0003-4000-8000-100000000001",
       "credentials": {
         "httpHeaderAuth": {
@@ -30,7 +30,7 @@
       "typeVersion": 1.1,
       "position": [224, 0],
       "id": "c3d4e5f6-0003-4000-8000-000000000002",
-      "name": "Split Out"
+      "name": "Split Change Request Events"
     },
     {
       "parameters": {
@@ -162,7 +162,7 @@
     },
     {
       "parameters": {
-        "content": "## Change request approvals (Enterprise)\n\nPost change requests sent to review to the approvers' Slack channel, and confirm when one is applied.\n\n**Requires Unleash Enterprise** — only Enterprise has change requests. [Start a trial](https://www.getunleash.io/plans/enterprise-payg).\n\n**Setup in Unleash:**\n1. Add a Webhook node (already here) with a Header Auth credential holding a random secret, and copy its Production URL.\n2. In Unleash, open Integrations > Webhook, paste the URL, put the same secret in the Authorization field, and select at least `change-request-sent-to-review` and `change-request-applied`.\n3. Connect your own Slack credential and set the approvers' channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\nDeduplicates on the event **id** on each branch, since Unleash retries a failed delivery once and events can arrive twice or out of order. Add the other change-request events (`change-request-approved`, `change-request-cancelled`, `change-request-scheduled-application-failure`) as more Switch rules if you want them too.",
+        "content": "## Change request approvals (Enterprise)\n\nPost change requests sent to review to the approvers' Slack channel, and confirm when one is applied.\n\n**Requires Unleash Enterprise** — only Enterprise has change requests. [Start a trial](https://www.getunleash.io/plans/enterprise-payg).\n\n**Setup in Unleash:**\n1. **Change request event received** (already here) has a Header Auth credential holding a random secret — copy its Production URL.\n2. In Unleash, open Integrations > Webhook, paste the URL, put the same secret in the Authorization field, and select at least `change-request-sent-to-review` and `change-request-applied`.\n3. Connect your own Slack credential and set the approvers' channel. On n8n 3.0+, that credential needs a Signature Secret before it can be saved.\n\nDeduplicates on the event **id** on each branch, since Unleash retries a failed delivery once and events can arrive twice or out of order. Add the other change-request events (`change-request-approved`, `change-request-cancelled`, `change-request-scheduled-application-failure`) as more rules on **Sent to review, or applied?** if you want them too.",
         "height": 300,
         "width": 460
       },
@@ -174,14 +174,14 @@
     }
   ],
   "connections": {
-    "Webhook": {
+    "Change request event received": {
       "main": [
         [
-          { "node": "Split Out", "type": "main", "index": 0 }
+          { "node": "Split Change Request Events", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Split Out": {
+    "Split Change Request Events": {
       "main": [
         [
           { "node": "Sent to review, or applied?", "type": "main", "index": 0 }
